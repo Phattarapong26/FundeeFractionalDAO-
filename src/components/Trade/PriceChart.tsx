@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Loader2, ChartLine } from 'lucide-react';
@@ -99,7 +98,7 @@ const PriceChart = ({ assetId, className }: PriceChartProps) => {
 
   if (loading) {
     return (
-      <Card className={cn("h-80", className)}>
+      <Card className={cn("h-[400px] w-full", className)}>
         <CardHeader>
           <CardTitle>Price History</CardTitle>
         </CardHeader>
@@ -112,7 +111,7 @@ const PriceChart = ({ assetId, className }: PriceChartProps) => {
 
   if (chartData.length === 0) {
     return (
-      <Card className={cn("h-80", className)}>
+      <Card className={cn("h-[400px] w-full", className)}>
         <CardHeader>
           <CardTitle>Price History</CardTitle>
         </CardHeader>
@@ -126,7 +125,7 @@ const PriceChart = ({ assetId, className }: PriceChartProps) => {
   }
 
   return (
-    <Card className={cn("h-80", className)}>
+    <Card className={cn("h-[400px] w-full", className)}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle>Price History</CardTitle>
@@ -176,71 +175,73 @@ const PriceChart = ({ assetId, className }: PriceChartProps) => {
         )}
       </CardHeader>
       <CardContent className="px-2 pb-2">
-        <div className="h-48">
+        <div className="h-[300px]">
           <ChartContainer config={chartConfig}>
-            <LineChart data={filteredData}>
-              <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-              <XAxis 
-                dataKey="timestamp" 
-                tickFormatter={(timestamp) => {
-                  const date = new Date(timestamp * 1000);
-                  return timeRange === '1d' 
-                    ? date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
-                    : date.toLocaleDateString([], {month: 'short', day: 'numeric'});
-                }}
-                fontSize={10}
-                tickMargin={5}
-              />
-              <YAxis 
-                domain={['dataMin', 'dataMax']} 
-                fontSize={10}
-                tickFormatter={(value) => {
-                  // Fix the type error by checking if value is a number
-                  return typeof value === 'number' ? value.toFixed(3) : value;
-                }}
-                width={45}
-              />
-              <Tooltip
-                content={({ active, payload }) => {
-                  if (active && payload && payload.length) {
-                    return (
-                      <div className="rounded-lg border bg-background p-2 shadow-sm">
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="flex flex-col">
-                            <span className="text-[0.70rem] uppercase text-muted-foreground">
-                              Time
-                            </span>
-                            <span className="font-bold text-xs">
-                              {new Date(payload[0].payload.timestamp * 1000).toLocaleString()}
-                            </span>
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-[0.70rem] uppercase text-muted-foreground">
-                              Price
-                            </span>
-                            <span className="font-bold text-xs">
-                              {typeof payload[0].value === 'number' 
-                                ? payload[0].value.toFixed(4) 
-                                : payload[0].value} ETH
-                            </span>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={filteredData}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                <XAxis 
+                  dataKey="timestamp" 
+                  tickFormatter={(timestamp) => {
+                    const date = new Date(timestamp * 1000);
+                    return timeRange === '1d' 
+                      ? date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                      : date.toLocaleDateString([], {month: 'short', day: 'numeric'});
+                  }}
+                  fontSize={10}
+                  tickMargin={5}
+                />
+                <YAxis 
+                  domain={['dataMin', 'dataMax']} 
+                  fontSize={10}
+                  tickFormatter={(value) => {
+                    // Fix the type error by checking if value is a number
+                    return typeof value === 'number' ? value.toFixed(3) : value;
+                  }}
+                  width={45}
+                />
+                <Tooltip
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      return (
+                        <div className="rounded-lg border bg-background p-2 shadow-sm">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="flex flex-col">
+                              <span className="text-[0.70rem] uppercase text-muted-foreground">
+                                Time
+                              </span>
+                              <span className="font-bold text-xs">
+                                {new Date(payload[0].payload.timestamp * 1000).toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-[0.70rem] uppercase text-muted-foreground">
+                                Price
+                              </span>
+                              <span className="font-bold text-xs">
+                                {typeof payload[0].value === 'number' 
+                                  ? payload[0].value.toFixed(4) 
+                                  : payload[0].value} ETH
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  }
-                  return null;
-                }}
-              />
-              <Line
-                type="monotone"
-                dataKey="price"
-                name="Price"
-                stroke="var(--color-price)"
-                strokeWidth={2}
-                dot={false}
-                activeDot={{ r: 4 }}
-              />
-            </LineChart>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="price"
+                  name="Price"
+                  stroke="var(--color-price)"
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 4 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </ChartContainer>
         </div>
       </CardContent>
