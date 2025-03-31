@@ -8,13 +8,13 @@ const founders = [
     delay: 0.1
   },
   {
-    name: "Athitiya Chaisiriwatthanachai",
+    name: "Athitaya Chaisiriwattanasai",
     title: "Co-Founder",
     image: "https://github.com/Zx0966566414/image/blob/main/Screenshot%202568-03-28%20at%2012.50.37.png?raw=true",
     delay: 0.2
   },
   {
-    name: "Kittiphat Premchit",
+    name: "Kittipat Pramjit",
     title: "Co-Founder",
     image: "https://github.com/Zx0966566414/image/blob/main/Screenshot%202568-03-28%20at%2012.57.20.png?raw=true",
     delay: 0.3
@@ -59,10 +59,10 @@ const Founders = () => {
               <p className="text-blue-600 font-medium">{founder.title}</p>
               <p className="text-gray-600 mt-4">
                 {founder.name === "Phattarapong Phengtavee" 
-                  ? "ผู้เชี่ยวชาญด้านการลงทุนและกลยุทธ์ธุรกิจ มุ่งมั่นในการสร้างโอกาสทางการลงทุนที่เข้าถึงได้สำหรับทุกคน"
+                  ? "I’m committed to democratizing investment opportunities, making access to capital seamless and inclusive for everyone"
                   : founder.name === "Athitiya Chaisiriwatthanachai"
-                  ? "ผู้เชี่ยวชาญด้านเทคโนโลยีและนวัตกรรม blockchain พัฒนาโซลูชันที่ก้าวล้ำนำสมัยเพื่อการเปลี่ยนแปลงอุตสาหกรรม"
-                  : "นักพัฒนาและผู้เชี่ยวชาญด้าน smart contract สร้างระบบที่ปลอดภัยและมีประสิทธิภาพสำหรับการจัดการสินทรัพย์ดิจิทัล"}
+                  ? "I’m passionate about technology and blockchain innovation, developing cutting-edge solutions to drive industry transformation"
+                  : "As a developer and smart contract specialist, I build secure and efficient systems for digital asset management"}
               </p>
             </motion.div>
           ))}
