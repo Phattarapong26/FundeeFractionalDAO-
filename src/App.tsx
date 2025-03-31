@@ -1,5 +1,4 @@
-
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route } from 'react-router-dom';
 import './App.css';
 import { Toaster } from '@/components/ui/sonner';
 import { Web3Provider } from '@/hooks/useWeb3';
@@ -22,7 +21,7 @@ function App() {
   return (
     <Web3Provider>
       <TransactionsProvider>
-        <BrowserRouter>
+        <HashRouter>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/dashboard" element={<Dashboard />} />
@@ -37,7 +36,7 @@ function App() {
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
-        </BrowserRouter>
+        </HashRouter>
       </TransactionsProvider>
     </Web3Provider>
   );
