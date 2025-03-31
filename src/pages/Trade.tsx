@@ -10,7 +10,11 @@ import {
   ArrowDownUp,
   Loader2,
   Info,
-  AlertCircle
+  AlertCircle,
+  ArrowDown,
+  ArrowUp,
+  ChevronRight,
+  RefreshCw
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -31,6 +35,9 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 import { useWeb3 } from '@/hooks/useWeb3';
 import { useAssets } from '@/hooks/useAssets';
@@ -41,6 +48,68 @@ import TradeHistory from '@/components/Trade/TradeHistory';
 import ActiveOrders from '@/components/Trade/ActiveOrders';
 import PriceChart from '@/components/Trade/PriceChart';
 import { truncateAddress, formatNumber, formatEthValue, formatTokenValue } from '@/lib/utils';
+
+const PriceInfoCard = ({ label, value, change, positive }) => {
+  return (
+    <div className="bg-gray-50 p-3 rounded">
+      <div className="text-xs text-gray-500 mb-1">{label}</div>
+      <div className="text-lg font-bold">{value}</div>
+      {change && (
+        <div className={`text-xs mt-1 ${positive ? 'text-green-600' : 'text-red-600'}`}>
+          {change}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const OrderRow = ({ price, shares, type }) => {
+  const color = type === 'buy' ? 'text-green-600' : 'text-red-600';
+  const bgColor = type === 'buy' ? 'bg-green-50' : 'bg-red-50';
+  const icon = type === 'buy' ? (
+    <ArrowUp className="w-3 h-3" />
+  ) : (
+    <ArrowDown className="w-3 h-3" />
+  );
+
+  return (
+    <div className={`flex justify-between items-center p-2 rounded ${bgColor}`}>
+      <div className={`flex items-center gap-1 ${color}`}>
+        {icon}
+        <span className="font-medium">${price}</span>
+      </div>
+      <div className="text-sm">{shares} shares</div>
+    </div>
+  );
+};
+
+const TradeRow = ({ trade }) => {
+  const timeString = new Date(trade.timestamp).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+  const dateString = new Date(trade.timestamp).toLocaleDateString([], {
+    month: 'short',
+    day: 'numeric'
+  });
+
+  return (
+    <div className="grid grid-cols-4 text-sm py-2 border-b border-gray-100 last:border-0">
+      <div>
+        <div className="font-medium">${trade.price}</div>
+        <div className="text-xs text-gray-500">{trade.shares} shares</div>
+      </div>
+      <div className="col-span-2">
+        <div className="font-medium truncate">{trade.buyer}</div>
+        <div className="text-xs text-gray-500 truncate">{trade.seller}</div>
+      </div>
+      <div className="text-right">
+        <div>{timeString}</div>
+        <div className="text-xs text-gray-500">{dateString}</div>
+      </div>
+    </div>
+  );
+};
 
 const Trade = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -151,351 +220,276 @@ const Trade = () => {
   };
   
   return (
-    <PageLayout className="bg-gray-50">
-      <div className="max-w-7xl mx-auto px-6 py-12">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="mb-8"
-        >
-          <h1 className="text-3xl font-bold mb-4">Token Trading Platform</h1>
-          <p className="text-lg text-gray-600 max-w-3xl">
-            Trade tokens from approved assets. Create buy or sell orders at your desired price, or fulfill existing orders.
-          </p>
-        </motion.div>
-        
-        {!account && (
-          <Alert variant="warning" className="mb-6">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Wallet not connected</AlertTitle>
-            <AlertDescription>
-              Please connect your wallet to access trading features.
-              <div className="mt-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={connectWallet}
-                >
-                  Connect Wallet
-                </Button>
-              </div>
-            </AlertDescription>
-          </Alert>
-        )}
-        
-        {account && !hasPaidFee && (
-          <Alert variant="warning" className="mb-6">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Transaction fee required</AlertTitle>
-            <AlertDescription>
-              You need to pay a one-time fee to perform transactions on the platform.
-              <div className="mt-2 flex flex-wrap gap-2">
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  onClick={() => payWithETH()}
-                  disabled={feeStatusLoading}
-                >
-                  Pay with ETH
-                </Button>
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  onClick={() => payWithToken()}
-                  disabled={feeStatusLoading}
-                >
-                  Pay with FUNDFA
-                </Button>
-              </div>
-            </AlertDescription>
-          </Alert>
-        )}
-        
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="mb-8 bg-white p-6 rounded-xl shadow-sm"
-        >
-          <div className="flex flex-col lg:flex-row gap-4 justify-between">
-            <div className="flex-grow relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-              <input
-                type="text"
-                placeholder="Search assets by name or symbol..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-              />
-            </div>
-            
-            <Button 
-              className="bg-blue-600 hover:bg-blue-700"
-              onClick={() => {
-                if (!account) {
-                  connectWallet();
-                } else if (!selectedAsset) {
-                  toast.error("Please select an asset first");
-                } else if (!hasPaidFee) {
-                  toast.error("You need to pay the transaction fee first");
-                } else {
-                  setShowTradeDialog(true);
-                }
-              }}
-            >
-              <ShoppingCart size={18} className="mr-2" />
-              Place Order
-            </Button>
-          </div>
-        </motion.div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-          {loading ? (
-            <div className="col-span-full flex justify-center py-20">
-              <Loader2 size={48} className="animate-spin text-blue-600" />
-            </div>
-          ) : approvedAssets.length > 0 ? (
-            approvedAssets.map(asset => (
-              <motion.div
-                key={asset.id.toString()}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4 }}
-                className={`bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
-                  selectedAsset?.id === asset.id ? 'ring-2 ring-blue-500' : ''
-                }`}
-                onClick={() => setSelectedAsset(asset)}
-              >
-                <div className="p-5">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h3 className="text-xl font-semibold">{asset.name}</h3>
-                      <p className="text-sm text-gray-500">{asset.symbol}</p>
-                    </div>
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                      asset.id === 999 ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
-                    }`}>
-                      {asset.id === 999 ? 'Platform Token' : 'Trading'}
-                    </span>
-                  </div>
-                  
-                  <div className="space-y-3 mb-4">
-                    <div className="flex items-center text-sm">
-                      <DollarSign size={16} className="text-green-500 mr-1.5" />
-                      <span className="font-medium">{formatEthValue(asset.pricePerShare)}</span>
-                      <span className="text-gray-500 ml-1">per share</span>
-                    </div>
-                    
-                    <div className="flex items-center text-sm">
-                      <Tag size={16} className="text-purple-500 mr-1.5" />
-                      <span className="font-medium">{formatTokenValue(asset.totalShares)}</span>
-                      <span className="text-gray-500 ml-1">total shares</span>
-                    </div>
-                    
-                    <div className="flex items-center text-sm">
-                      <List size={16} className="text-orange-500 mr-1.5" />
-                      <span className="font-medium">{asset.investorCount.toString()}</span>
-                      <span className="text-gray-500 ml-1">investors</span>
-                    </div>
-                  </div>
-                  
-                  <Button 
-                    variant="outline" 
-                    className="w-full"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (asset.id === 999) {
-                        navigate('/token-marketplace');
-                      } else {
-                        navigate(`/asset/${asset.id}`);
-                      }
-                    }}
-                  >
-                    {asset.id === 999 ? 'View Token Details' : 'View Asset Details'}
-                  </Button>
-                </div>
-              </motion.div>
-            ))
-          ) : (
-            <div className="col-span-full text-center py-20 bg-white rounded-xl">
-              <Info size={48} className="mx-auto mb-4 text-gray-300" />
-              <h3 className="text-xl font-semibold mb-2">No Approved Assets</h3>
-              <p className="text-gray-500 mb-6">
-                There are currently no approved assets available for trading.
-              </p>
-              <Button 
-                className="bg-blue-600 hover:bg-blue-700"
-                onClick={() => navigate('/marketplace')}
-              >
-                Explore Marketplace
+    <PageLayout className="min-h-screen flex flex-col">
+      <main className="flex-grow py-8">
+        <div className="container mx-auto px-4">
+          <div className="flex justify-between items-center mb-8">
+            <h1 className="text-3xl font-bold">Secondary Market</h1>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">Last updated: 1 min ago</span>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <RefreshCw className="h-4 w-4" />
               </Button>
             </div>
-          )}
-        </div>
-        
-        {selectedAsset && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
-            className="bg-white rounded-xl shadow-sm overflow-hidden mb-12"
-          >
-            <div className="p-6 border-b">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-2xl font-semibold">{selectedAsset.name} ({selectedAsset.symbol})</h2>
-                  <p className="text-sm text-gray-500">Created by {truncateAddress(selectedAsset.creator)}</p>
-                </div>
-                
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <p className="text-sm text-gray-500">Current Market Price</p>
-                    <p className="text-xl font-semibold">{Number(selectedAsset.pricePerShare) / 1e18} ETH</p>
+          </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <CardTitle>{selectedAsset?.name || 'Select an Asset'}</CardTitle>
+                      <CardDescription>Current market activity</CardDescription>
+                    </div>
+                    <Select 
+                      value={selectedAsset?.id.toString()} 
+                      onValueChange={(value) => {
+                        const asset = approvedAssets.find(a => a.id.toString() === value);
+                        if (asset) setSelectedAsset(asset);
+                      }}
+                    >
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Select asset" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {approvedAssets.map(asset => (
+                          <SelectItem key={asset.id} value={asset.id.toString()}>
+                            {asset.name} ({asset.symbol})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[400px]">
+                    <PriceChart assetId={selectedAsset?.id} />
                   </div>
                   
-                  <Button
-                    className="bg-blue-600 hover:bg-blue-700"
-                    onClick={() => setShowTradeDialog(true)}
-                  >
-                    Trade Now
-                  </Button>
-                </div>
-              </div>
-            </div>
-            
-            <div className="p-6 border-b">
-              <PriceChart assetId={selectedAsset.id} />
-            </div>
-            
-            <div className="p-6">
-              <Tabs defaultValue="orderbook">
-                <TabsList className="mb-6">
-                  <TabsTrigger value="orderbook" className="flex items-center gap-2">
-                    <ArrowUpDown size={16} />
-                    <span>Orderbook</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="history" className="flex items-center gap-2">
-                    <ArrowDownUp size={16} />
-                    <span>Trade History</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="myorders" className="flex items-center gap-2">
-                    <List size={16} />
-                    <span>My Orders</span>
-                  </TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="orderbook">
-                  <TradeOrderbook assetId={selectedAsset.id} />
-                </TabsContent>
-                
-                <TabsContent value="history">
-                  <TradeHistory assetId={selectedAsset.id} />
-                </TabsContent>
-                
-                <TabsContent value="myorders">
-                  <ActiveOrders 
-                    assetId={selectedAsset.id} 
-                    onCancelOrder={async (orderId) => {
-                      try {
-                        await cancelOrder(contract, orderId, account);
-                        toast.success("Order cancelled successfully");
-                      } catch (error) {
-                        toast.error(`Failed to cancel order: ${error.message || 'Unknown error'}`);
-                      }
-                    }} 
-                  />
-                </TabsContent>
-              </Tabs>
-            </div>
-          </motion.div>
-        )}
-        
-        <Dialog open={showTradeDialog} onOpenChange={setShowTradeDialog}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Place a Trade Order</DialogTitle>
-              <DialogDescription>
-                {selectedAsset ? `Create an order to buy or sell ${selectedAsset.name} tokens` : 'Select an asset first'}
-              </DialogDescription>
-            </DialogHeader>
-            
-            {selectedAsset && (
-              <div className="space-y-4 py-4">
-                <RadioGroup value={tradeType} onValueChange={setTradeType} className="flex gap-4">
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="buy" id="buy" />
-                    <Label htmlFor="buy" className="font-medium text-green-600">Buy Tokens</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="sell" id="sell" />
-                    <Label htmlFor="sell" className="font-medium text-red-600">Sell Tokens</Label>
-                  </div>
-                </RadioGroup>
-                
-                <Separator />
-                
-                <div>
-                  <Label htmlFor="price">Price per Token (ETH)</Label>
-                  <div className="relative mt-1">
-                    <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-                    <Input
-                      id="price"
-                      type="number"
-                      step="0.0001"
-                      min="0.0001"
-                      value={orderPrice}
-                      onChange={(e) => setOrderPrice(e.target.value)}
-                      className="pl-10"
-                      placeholder="0.0000"
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                    <PriceInfoCard
+                      label="Current Price"
+                      value={selectedAsset ? `${formatEthValue(selectedAsset.pricePerShare)} ETH` : '-'}
+                      change="+2.5%"
+                      positive={true}
+                    />
+                    <PriceInfoCard
+                      label="24h Low"
+                      value="0.0242 ETH"
+                      change=""
+                      positive={false}
+                    />
+                    <PriceInfoCard
+                      label="24h High"
+                      value="0.0251 ETH"
+                      change=""
+                      positive={false}
+                    />
+                    <PriceInfoCard
+                      label="24h Volume"
+                      value="152 shares"
+                      change="+12.4%"
+                      positive={true}
                     />
                   </div>
-                </div>
-                
-                <div>
-                  <Label htmlFor="amount">Number of Tokens</Label>
-                  <Input
-                    id="amount"
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={orderAmount}
-                    onChange={(e) => setOrderAmount(e.target.value)}
-                    placeholder="0"
-                  />
-                </div>
-                
-                <div className="bg-gray-50 p-3 rounded-md">
-                  <div className="flex justify-between text-sm mb-2">
-                    <span>Total {tradeType === 'buy' ? 'Cost' : 'Proceeds'}:</span>
-                    <span className="font-medium">{calculateTotal()} ETH</span>
-                  </div>
-                </div>
-              </div>
-            )}
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Order Book</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <TradeOrderbook assetId={selectedAsset?.id} />
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recent Trades</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <TradeHistory assetId={selectedAsset?.id} />
+                </CardContent>
+              </Card>
+            </div>
             
-            <DialogFooter>
-              <Button 
-                variant="outline" 
-                onClick={() => setShowTradeDialog(false)}
-              >
-                Cancel
-              </Button>
-              <Button 
-                className={tradeType === 'buy' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}
-                onClick={handlePlaceOrder}
-                disabled={isPlacingOrder || !account || !selectedAsset || !hasPaidFee}
-              >
-                {isPlacingOrder ? (
-                  <><Loader2 size={16} className="mr-2 animate-spin" /> Processing...</>
-                ) : (
-                  `Place ${tradeType === 'buy' ? 'Buy' : 'Sell'} Order`
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+            <div>
+              <Card className="sticky top-24">
+                <CardHeader>
+                  <CardTitle>Trade</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Tabs defaultValue="buy" value={tradeType} onValueChange={setTradeType}>
+                    <TabsList className="grid w-full grid-cols-2 mb-6">
+                      <TabsTrigger value="buy">Buy</TabsTrigger>
+                      <TabsTrigger value="sell">Sell</TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="buy">
+                      <div className="space-y-6">
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Asset</label>
+                          <Select 
+                            value={selectedAsset?.id.toString()} 
+                            onValueChange={(value) => {
+                              const asset = approvedAssets.find(a => a.id.toString() === value);
+                              if (asset) setSelectedAsset(asset);
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select asset" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {approvedAssets.map(asset => (
+                                <SelectItem key={asset.id} value={asset.id.toString()}>
+                                  {asset.name} ({asset.symbol})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Price per Share</label>
+                          <Input 
+                            value={orderPrice}
+                            onChange={(e) => setOrderPrice(e.target.value)}
+                            placeholder="0.0000"
+                          />
+                          <div className="flex justify-between text-xs mt-1">
+                            <span className="text-gray-500">Market: {selectedAsset ? formatEthValue(selectedAsset.pricePerShare) : '0.0000'} ETH</span>
+                            <button 
+                              className="text-blue-600"
+                              onClick={() => setOrderPrice(selectedAsset ? (Number(selectedAsset.pricePerShare) / 1e18).toString() : '')}
+                            >
+                              Use Market Price
+                            </button>
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Amount (Shares)</label>
+                          <Input 
+                            type="number" 
+                            value={orderAmount}
+                            onChange={(e) => setOrderAmount(e.target.value)}
+                            placeholder="0"
+                          />
+                        </div>
+                        
+                        <div className="pt-2 pb-4 border-t border-b border-gray-100">
+                          <div className="flex justify-between mb-2">
+                            <span className="text-sm">Total Cost</span>
+                            <span className="font-medium">{calculateTotal()} ETH</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-sm">Platform Fee (1%)</span>
+                            <span className="font-medium">{(calculateTotal() * 0.01).toFixed(4)} ETH</span>
+                          </div>
+                        </div>
+                        
+                        <Button 
+                          className="w-full bg-blue-600 hover:bg-blue-700"
+                          onClick={handlePlaceOrder}
+                          disabled={isPlacingOrder || !account || !selectedAsset || !hasPaidFee}
+                        >
+                          {isPlacingOrder ? (
+                            <><Loader2 size={16} className="mr-2 animate-spin" /> Processing...</>
+                          ) : (
+                            'Buy Shares'
+                          )}
+                        </Button>
+                      </div>
+                    </TabsContent>
+                    
+                    <TabsContent value="sell">
+                      <div className="space-y-6">
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Asset</label>
+                          <Select 
+                            value={selectedAsset?.id.toString()} 
+                            onValueChange={(value) => {
+                              const asset = approvedAssets.find(a => a.id.toString() === value);
+                              if (asset) setSelectedAsset(asset);
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select asset" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {approvedAssets.map(asset => (
+                                <SelectItem key={asset.id} value={asset.id.toString()}>
+                                  {asset.name} ({asset.symbol})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <div className="text-xs mt-1 text-gray-500">
+                            Your balance: {selectedAsset ? formatTokenValue(selectedAsset.availableShares) : '0'} shares
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Price per Share</label>
+                          <Input 
+                            value={orderPrice}
+                            onChange={(e) => setOrderPrice(e.target.value)}
+                            placeholder="0.0000"
+                          />
+                          <div className="flex justify-between text-xs mt-1">
+                            <span className="text-gray-500">Market: {selectedAsset ? formatEthValue(selectedAsset.pricePerShare) : '0.0000'} ETH</span>
+                            <button 
+                              className="text-blue-600"
+                              onClick={() => setOrderPrice(selectedAsset ? (Number(selectedAsset.pricePerShare) / 1e18).toString() : '')}
+                            >
+                              Use Market Price
+                            </button>
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Amount (Shares)</label>
+                          <Input 
+                            type="number" 
+                            value={orderAmount}
+                            onChange={(e) => setOrderAmount(e.target.value)}
+                            placeholder="0"
+                          />
+                        </div>
+                        
+                        <div className="pt-2 pb-4 border-t border-b border-gray-100">
+                          <div className="flex justify-between mb-2">
+                            <span className="text-sm">Total Proceeds</span>
+                            <span className="font-medium">{calculateTotal()} ETH</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-sm">Platform Fee (1%)</span>
+                            <span className="font-medium">{(calculateTotal() * 0.01).toFixed(4)} ETH</span>
+                          </div>
+                        </div>
+                        
+                        <Button 
+                          className="w-full bg-red-600 hover:bg-red-700"
+                          onClick={handlePlaceOrder}
+                          disabled={isPlacingOrder || !account || !selectedAsset || !hasPaidFee}
+                        >
+                          {isPlacingOrder ? (
+                            <><Loader2 size={16} className="mr-2 animate-spin" /> Processing...</>
+                          ) : (
+                            'Sell Shares'
+                          )}
+                        </Button>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </main>
     </PageLayout>
   );
 };
