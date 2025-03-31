@@ -175,10 +175,13 @@ const PriceChart = ({ assetId, className }: PriceChartProps) => {
         )}
       </CardHeader>
       <CardContent className="px-2 pb-2">
-        <div className="h-[200px]">
+        <div className="h-[200px] w-full">
           <ChartContainer config={chartConfig}>
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={filteredData}>
+              <LineChart 
+                data={filteredData}
+                margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
                 <XAxis 
                   dataKey="timestamp" 
@@ -190,15 +193,16 @@ const PriceChart = ({ assetId, className }: PriceChartProps) => {
                   }}
                   fontSize={10}
                   tickMargin={5}
+                  minTickGap={50}
                 />
                 <YAxis 
                   domain={['dataMin', 'dataMax']} 
                   fontSize={10}
                   tickFormatter={(value) => {
-                    // Fix the type error by checking if value is a number
                     return typeof value === 'number' ? value.toFixed(3) : value;
                   }}
                   width={45}
+                  tickMargin={5}
                 />
                 <Tooltip
                   content={({ active, payload }) => {
