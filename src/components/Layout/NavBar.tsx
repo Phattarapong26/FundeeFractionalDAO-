@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -59,40 +58,40 @@ const NavBar = () => {
       }`}
     >
       <div className="max-w-7xl mx-auto flex items-center justify-between">
-        <div className="flex items-center gap-12">
+        <div className="flex items-center">
           <NavLink to="/" className="flex items-center">
             <Logo />
           </NavLink>
-          
-          <nav className="hidden md:flex items-center space-x-8">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                className={({ isActive }) =>
-                  `relative px-1 py-2 text-base font-medium transition-colors duration-200 ${
-                    isActive ? 'text-dao' : 'text-gray-600 hover:text-gray-900'
-                  }`
-                }
-              >
-                {({ isActive }) => (
-                  <>
-                    {item.name}
-                    {isActive && (
-                      <motion.div
-                        layoutId="navbar-indicator"
-                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-dao"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.3 }}
-                      />
-                    )}
-                  </>
-                )}
-              </NavLink>
-            ))}
-          </nav>
         </div>
+        
+        <nav className="hidden md:flex items-center space-x-8">
+          {navItems.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive }) =>
+                `relative px-1 py-2 text-base font-medium transition-colors duration-200 ${
+                  isActive ? 'text-dao' : 'text-gray-600 hover:text-gray-900'
+                }`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  {item.name}
+                  {isActive && (
+                    <motion.div
+                      layoutId="navbar-indicator"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-dao"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.3 }}
+                    />
+                  )}
+                </>
+              )}
+            </NavLink>
+          ))}
+        </nav>
 
         {account ? (
           <div className="flex items-center gap-3">

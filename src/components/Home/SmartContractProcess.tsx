@@ -1,30 +1,30 @@
-
 import { motion } from 'framer-motion';
+import { Coins, FileText, Building2, Wallet } from 'lucide-react';
 
 const SmartContractProcess = () => {
   const processes = [
     {
       title: "Asset Tokenization",
       description: "Assets are tokenized on the blockchain with a specified number of shares, price per share, and funding details.",
-      icon: "🪙",
+      icon: <Coins className="w-8 h-8 text-blue-600" />,
       delay: 0.1
     },
     {
       title: "Purchase Shares via Smart Contract",
       description: "Users interact with the smart contract to purchase shares, with funds and ownership managed transparently on the blockchain.",
-      icon: "📝",
+      icon: <FileText className="w-8 h-8 text-blue-600" />,
       delay: 0.2
     },
     {
       title: "Governance Voting",
       description: "Share owners can create and vote on proposals, with execution automatically triggered via smart contract when approved.",
-      icon: "🏛️",
+      icon: <Building2 className="w-8 h-8 text-blue-600" />,
       delay: 0.3
     },
     {
       title: "Smart Dividend Distribution",
       description: "Asset profits are distributed automatically to shareholders proportional to their ownership stake.",
-      icon: "💰",
+      icon: <Wallet className="w-8 h-8 text-blue-600" />,
       delay: 0.4
     }
   ];
@@ -40,7 +40,7 @@ const SmartContractProcess = () => {
           viewport={{ once: true }}
           className="card text-center hover:translate-y-[-5px]"
         >
-          <div className="w-16 h-16 bg-blue-50 rounded-xl flex items-center justify-center text-2xl mx-auto mb-5">
+          <div className="w-16 h-16 bg-blue-50 rounded-xl flex items-center justify-center mx-auto mb-5">
             {process.icon}
           </div>
           <h3 className="heading-sm mb-3">{process.title}</h3>
