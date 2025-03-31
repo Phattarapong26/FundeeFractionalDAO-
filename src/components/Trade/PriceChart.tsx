@@ -98,7 +98,7 @@ const PriceChart = ({ assetId, className }: PriceChartProps) => {
 
   if (loading) {
     return (
-      <Card className={cn("h-[400px] w-full", className)}>
+      <Card className={cn("h-[300px] w-full", className)}>
         <CardHeader>
           <CardTitle>Price History</CardTitle>
         </CardHeader>
@@ -111,7 +111,7 @@ const PriceChart = ({ assetId, className }: PriceChartProps) => {
 
   if (chartData.length === 0) {
     return (
-      <Card className={cn("h-[400px] w-full", className)}>
+      <Card className={cn("h-[300px] w-full", className)}>
         <CardHeader>
           <CardTitle>Price History</CardTitle>
         </CardHeader>
@@ -125,7 +125,7 @@ const PriceChart = ({ assetId, className }: PriceChartProps) => {
   }
 
   return (
-    <Card className={cn("h-[400px] w-full", className)}>
+    <Card className={cn("h-[300px] w-full", className)}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle>Price History</CardTitle>
@@ -175,7 +175,7 @@ const PriceChart = ({ assetId, className }: PriceChartProps) => {
         )}
       </CardHeader>
       <CardContent className="px-2 pb-2">
-        <div className="h-[300px]">
+        <div className="h-[200px]">
           <ChartContainer config={chartConfig}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={filteredData}>
