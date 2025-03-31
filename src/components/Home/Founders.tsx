@@ -1,23 +1,22 @@
-
 import { motion } from 'framer-motion';
 
 const founders = [
   {
     name: "Phattarapong Phengtavee",
     title: "Founder",
-    image: "https://images.unsplash.com/photo-1649972904349-6e44c42644a7?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&h=400&ixid=MnwxfDB8MXxyYW5kb218MHx8cGVyc29ufHx8fHx8MTY4MzYzNzYwNg&ixlib=rb-4.0.3&q=80&w=400",
+    image: "https://github.com/Zx0966566414/image/blob/main/Screenshot%202568-03-28%20at%2013.08.08.png?raw=true",
     delay: 0.1
   },
   {
     name: "Athitiya Chaisiriwatthanachai",
     title: "Co-Founder",
-    image: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&h=400&ixid=MnwxfDB8MXxyYW5kb218MHx8cGVyc29ufHx8fHx8MTY4MzYzNzYwNg&ixlib=rb-4.0.3&q=80&w=400",
+    image: "https://github.com/Zx0966566414/image/blob/main/Screenshot%202568-03-28%20at%2012.50.37.png?raw=true",
     delay: 0.2
   },
   {
     name: "Kittiphat Premchit",
     title: "Co-Founder",
-    image: "https://images.unsplash.com/photo-1605810230434-7631ac76ec81?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&h=400&ixid=MnwxfDB8MXxyYW5kb218MHx8cGVyc29ufHx8fHx8MTY4MzYzNzYwNg&ixlib=rb-4.0.3&q=80&w=400",
+    image: "https://github.com/Zx0966566414/image/blob/main/Screenshot%202568-03-28%20at%2012.57.20.png?raw=true",
     delay: 0.3
   }
 ];
@@ -59,7 +58,11 @@ const Founders = () => {
               <h3 className="heading-sm mb-2">{founder.name}</h3>
               <p className="text-blue-600 font-medium">{founder.title}</p>
               <p className="text-gray-600 mt-4">
-                Blockchain enthusiast and visionary committed to democratizing asset ownership through innovative technology.
+                {founder.name === "Phattarapong Phengtavee" 
+                  ? "ผู้เชี่ยวชาญด้านการลงทุนและกลยุทธ์ธุรกิจ มุ่งมั่นในการสร้างโอกาสทางการลงทุนที่เข้าถึงได้สำหรับทุกคน"
+                  : founder.name === "Athitiya Chaisiriwatthanachai"
+                  ? "ผู้เชี่ยวชาญด้านเทคโนโลยีและนวัตกรรม blockchain พัฒนาโซลูชันที่ก้าวล้ำนำสมัยเพื่อการเปลี่ยนแปลงอุตสาหกรรม"
+                  : "นักพัฒนาและผู้เชี่ยวชาญด้าน smart contract สร้างระบบที่ปลอดภัยและมีประสิทธิภาพสำหรับการจัดการสินทรัพย์ดิจิทัล"}
               </p>
             </motion.div>
           ))}

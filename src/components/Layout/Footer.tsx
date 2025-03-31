@@ -1,11 +1,10 @@
-
 import { NavLink } from 'react-router-dom';
 
 const Footer = () => {
   return (
     <footer className="bg-white border-t border-gray-100 py-12 mt-20">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
+      <div className="w-full">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-10 px-6">
           <div>
             <h3 className="text-xl font-bold text-dao mb-4">FractionalDAO</h3>
             <p className="text-gray-500 mb-4">
@@ -44,7 +43,7 @@ const Footer = () => {
           </div>
         </div>
 
-        <div className="mt-10 pt-6 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between">
+        <div className="mt-10 pt-6 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between px-6">
           <p className="text-gray-400 text-sm">
             © {new Date().getFullYear()} FractionalDAO. All rights reserved.
           </p>
