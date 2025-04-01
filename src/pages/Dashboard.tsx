@@ -12,10 +12,14 @@ import { InvestmentChart } from '@/components/Dashboard/InvestmentChart';
 import { DashboardStats } from '@/components/Dashboard/DashboardStats';
 import { useNavigate } from 'react-router-dom';
 import { Building2, Coins, PlusCircle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useRewards } from '@/hooks/useRewards';
+import { Loader2 } from 'lucide-react';
 
 const Dashboard = () => {
   const { account, connectWallet } = useWeb3();
   const navigate = useNavigate();
+  const { rewards, isLoading: rewardsLoading } = useRewards();
 
   return (
     <PageLayout className="bg-gray-50">
@@ -52,88 +56,82 @@ const Dashboard = () => {
           </motion.div>
         ) : (
           <>
-            <DashboardStats 
-              totalAssets={0}
-              totalUsers={0}
-              totalValue={0}
-              tradingVolume={0}
-            />
-            <InvestmentChart />
-            
-            <Tabs defaultValue="portfolio" className="w-full mt-8">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
-                <TabsTrigger value="dao">DAO Governance</TabsTrigger>
-                <TabsTrigger value="history">Transaction History</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="portfolio" className="mt-6">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                  <UserSharesCard />
-                  
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4 }}
-                    className="bg-white rounded-xl p-6 shadow-sm"
-                  >
-                    <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <Button 
-                        variant="outline" 
-                        className="flex flex-col items-center justify-center h-24 gap-2 hover:bg-blue-50 transition-colors"
-                        onClick={() => navigate('/marketplace')}
-                      >
-                        <Building2 className="w-6 h-6 text-blue-600" />
-                        <span className="text-sm text-gray-600">Browse Investments</span>
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        className="flex flex-col items-center justify-center h-24 gap-2 hover:bg-purple-50 transition-colors"
-                        onClick={() => navigate('/token-marketplace')}
-                      >
-                        <Coins className="w-6 h-6 text-purple-600" />
-                        <span className="text-sm text-gray-600">Token Market</span>
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        className="flex flex-col items-center justify-center h-24 gap-2 hover:bg-green-50 transition-colors"
-                        onClick={() => navigate('/create-asset')}
-                      >
-                        <PlusCircle className="w-6 h-6 text-green-600" />
-                        <span className="text-sm text-gray-600">Create Asset</span>
-                      </Button>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center space-x-2">
+                    <Coins className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">รางวัลที่ได้รับ</p>
+                      <p className="text-2xl font-bold">
+                        {rewardsLoading ? (
+                          <Loader2 className="animate-spin" />
+                        ) : (
+                          `${Number(rewards?.total || 0).toLocaleString('th-TH')} ETH`
+                        )}
+                      </p>
                     </div>
-                  </motion.div>
-                </div>
-                
-                <UserInvestments 
-                  investments={[]}
-                  loading={false}
-                />
-                <PlatformTokenInfo />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Tabs defaultValue="overview" className="space-y-4">
+              <TabsList>
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="investments">Investments</TabsTrigger>
+                <TabsTrigger value="proposals">Proposals</TabsTrigger>
+                <TabsTrigger value="transactions">Transactions</TabsTrigger>
+                <TabsTrigger value="rewards">Rewards</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="overview" className="space-y-4">
+                <DashboardStats />
+                <InvestmentChart />
+                <UserSharesCard />
               </TabsContent>
-              
-              <TabsContent value="dao" className="mt-6">
+
+              <TabsContent value="investments">
+                <UserInvestments />
+              </TabsContent>
+
+              <TabsContent value="proposals">
                 <UserProposals />
-                <div className="mt-6">
-                  <Button 
-                    className="bg-purple-600 hover:bg-purple-700 mt-4"
-                    onClick={() => navigate('/create-proposal')}
-                  >
-                    Create New Proposal
-                  </Button>
-                  <Button 
-                    className="bg-blue-600 hover:bg-blue-700 mt-4 ml-4"
-                    onClick={() => navigate('/governance')}
-                  >
-                    View All Proposals
-                  </Button>
-                </div>
               </TabsContent>
-              
-              <TabsContent value="history" className="mt-6">
-                <TransactionsList showAll={true} />
+
+              <TabsContent value="transactions">
+                <TransactionsList />
+              </TabsContent>
+
+              <TabsContent value="rewards">
+                <div className="space-y-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Rewards History</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {rewardsLoading ? (
+                        <div className="flex items-center justify-center h-32">
+                          <Loader2 className="animate-spin" />
+                        </div>
+                      ) : rewards?.history?.length > 0 ? (
+                        <div className="space-y-4">
+                          {rewards.history.map((reward, index) => (
+                            <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                              <div>
+                                <p className="font-medium">{reward.type}</p>
+                                <p className="text-sm text-gray-500">{reward.timestamp}</p>
+                              </div>
+                              <p className="font-mono">{reward.amount} ETH</p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-center text-gray-500">No rewards history found</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
               </TabsContent>
             </Tabs>
           </>

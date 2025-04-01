@@ -15,11 +15,7 @@ import CreateProposal from './pages/CreateProposal';
 import TokenMarketplace from './pages/TokenMarketplace';
 import CreateAsset from './pages/CreateAsset';
 import Trade from './pages/Trade';
-import Rewards from './pages/Rewards';
 import { Fee } from './pages/Fee';
-import SecuritySettings from './pages/SecuritySettings';
-import Whitelist from './pages/Whitelist';
-import Analytics from './pages/Analytics';
 import NotFound from './pages/NotFound';
 
 function App() {
@@ -38,11 +34,7 @@ function App() {
             <Route path="/token-marketplace" element={<TokenMarketplace />} />
             <Route path="/create-asset" element={<CreateAsset />} />
             <Route path="/trade" element={<Trade />} />
-            <Route path="/rewards" element={<Rewards />} />
             <Route path="/fee" element={<Fee />} />
-            <Route path="/security-settings" element={<SecuritySettings />} />
-            <Route path="/whitelist" element={<Whitelist />} />
-            <Route path="/analytics" element={<Analytics />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />

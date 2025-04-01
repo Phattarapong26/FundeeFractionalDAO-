@@ -40,6 +40,27 @@ export const Web3Provider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const initializeWeb3 = async (accounts: string[]) => {
+    try {
+      const Web3 = (await import('web3')).default;
+      const web3Instance = new Web3(window.ethereum);
+      setWeb3(web3Instance);
+      
+      const contractInstance = getContract(web3Instance);
+      if (!contractInstance) {
+        throw new Error('ไม่สามารถเชื่อมต่อกับ Smart Contract ได้');
+      }
+      setContract(contractInstance);
+      
+      console.log("Web3 and contract initialized with account:", accounts[0]);
+      return true;
+    } catch (error) {
+      console.error("Failed to initialize Web3:", error);
+      toast.error('ไม่สามารถเชื่อมต่อกับ Smart Contract ได้');
+      return false;
+    }
+  };
+
   useEffect(() => {
     if (typeof window !== 'undefined' && window.ethereum) {
       const handleAccountsChanged = async (accounts: string[]) => {
@@ -48,23 +69,7 @@ export const Web3Provider = ({ children }: { children: ReactNode }) => {
           if (!isCorrectNetwork) return;
 
           setAccount(accounts[0]);
-          
-          try {
-            const Web3 = (await import('web3')).default;
-            const web3Instance = new Web3(window.ethereum);
-            setWeb3(web3Instance);
-            
-            const contractInstance = getContract(web3Instance);
-            if (!contractInstance) {
-              throw new Error('ไม่สามารถเชื่อมต่อกับ Smart Contract ได้');
-            }
-            setContract(contractInstance);
-            
-            console.log("Web3 and contract initialized with account:", accounts[0]);
-          } catch (error) {
-            console.error("Failed to initialize after account change:", error);
-            toast.error('ไม่สามารถเชื่อมต่อกับ Smart Contract ได้');
-          }
+          await initializeWeb3(accounts);
         } else {
           setAccount(null);
           setWeb3(null);
@@ -92,72 +97,44 @@ export const Web3Provider = ({ children }: { children: ReactNode }) => {
             if (!isCorrectNetwork) return;
 
             setAccount(accounts[0]);
-            
-            const Web3 = (await import('web3')).default;
-            const web3Instance = new Web3(window.ethereum);
-            setWeb3(web3Instance);
-            
-            const contractInstance = getContract(web3Instance);
-            if (!contractInstance) {
-              throw new Error('ไม่สามารถเชื่อมต่อกับ Smart Contract ได้');
-            }
-            setContract(contractInstance);
-            
-            console.log("Initial connection established with account:", accounts[0]);
+            await initializeWeb3(accounts);
           }
         } catch (error) {
-          console.error('Error checking connection', error);
-          toast.error('ไม่สามารถเชื่อมต่อกับ Wallet ได้');
+          console.error('Error checking connection:', error);
         }
       };
 
       checkConnection();
-
-      return () => {
-        if (window.ethereum) {
-          window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
-          window.ethereum.removeListener('chainChanged', handleChainChanged);
-        }
-      };
     }
   }, []);
 
   const connectWallet = async (): Promise<boolean> => {
     if (!window.ethereum) {
-      toast.error('กรุณาติดตั้ง MetaMask');
+      toast.error('กรุณาติดตั้ง MetaMask หรือ Wallet อื่นๆ');
       return false;
     }
 
+    setIsConnecting(true);
     try {
-      setIsConnecting(true);
-      const isCorrectNetwork = await checkNetwork();
-      if (!isCorrectNetwork) return false;
-
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       if (accounts && accounts.length > 0) {
-        setAccount(accounts[0]);
-        
-        const Web3 = (await import('web3')).default;
-        const web3Instance = new Web3(window.ethereum);
-        setWeb3(web3Instance);
-        
-        const contractInstance = getContract(web3Instance);
-        if (!contractInstance) {
-          throw new Error('ไม่สามารถเชื่อมต่อกับ Smart Contract ได้');
+        const isCorrectNetwork = await checkNetwork();
+        if (!isCorrectNetwork) {
+          setIsConnecting(false);
+          return false;
         }
-        setContract(contractInstance);
-        
-        toast.success('เชื่อมต่อ Wallet สำเร็จ');
-        return true;
+
+        setAccount(accounts[0]);
+        const success = await initializeWeb3(accounts);
+        setIsConnecting(false);
+        return success;
       }
-      return false;
     } catch (error) {
       console.error('Error connecting wallet:', error);
       toast.error('ไม่สามารถเชื่อมต่อ Wallet ได้');
-      return false;
-    } finally {
-      setIsConnecting(false);
     }
+    setIsConnecting(false);
+    return false;
   };
 
   const disconnectWallet = () => {
@@ -169,7 +146,17 @@ export const Web3Provider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <Web3Context.Provider value={{ account, web3, contract, connectWallet, disconnectWallet, isConnecting, networkId }}>
+    <Web3Context.Provider
+      value={{
+        account,
+        web3,
+        contract,
+        connectWallet,
+        disconnectWallet,
+        isConnecting,
+        networkId,
+      }}
+    >
       {children}
     </Web3Context.Provider>
   );

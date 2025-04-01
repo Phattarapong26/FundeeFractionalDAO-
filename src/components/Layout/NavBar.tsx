@@ -60,8 +60,6 @@ const NavBar = () => {
     { name: 'Dashboard', path: '/dashboard', icon: BarChart2 },
     { name: 'Governance', path: '/governance', icon: ShieldCheck },
     { name: 'Rewards', path: '/rewards', icon: Coins },
-    { name: 'Analytics', path: '/analytics', icon: LineChart },
-    { name: 'Security', path: '/security-settings', icon: Shield },
   ];
 
   return (

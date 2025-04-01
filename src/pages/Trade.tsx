@@ -14,9 +14,11 @@ import {
   ArrowDown,
   ArrowUp,
   ChevronRight,
-  RefreshCw
+  RefreshCw,
+  Users,
+  Activity
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import PageLayout from '@/components/Layout/PageLayout';
@@ -42,6 +44,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { useWeb3 } from '@/hooks/useWeb3';
 import { useAssets } from '@/hooks/useAssets';
 import { useFeeStatus } from '@/hooks/useFeeStatus';
+import { useAssetAnalytics } from '@/hooks/useAssetAnalytics';
 import { createTradeOrder, matchOrders, cancelOrder, getBestPrices } from '@/lib/contract/tradeContract';
 import TradeOrderbook from '@/components/Trade/TradeOrderbook';
 import TradeHistory from '@/components/Trade/TradeHistory';
@@ -112,6 +115,14 @@ const TradeRow = ({ trade }) => {
 };
 
 const Trade = () => {
+  const { id } = useParams();
+  const { 
+    priceHistory = [], 
+    volumeHistory = [], 
+    holderHistory = [], 
+    tradingActivity = [], 
+    isLoading: analyticsLoading 
+  } = useAssetAnalytics(Number(id));
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [tradeType, setTradeType] = useState('buy');
@@ -271,6 +282,82 @@ const Trade = () => {
                 <RefreshCw className="h-4 w-4" />
               </Button>
             </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center space-x-2">
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">ราคาปัจจุบัน</p>
+                    <p className="text-2xl font-bold">
+                      {analyticsLoading ? (
+                        <Loader2 className="animate-spin" />
+                      ) : priceHistory.length > 0 ? (
+                        `${Number(priceHistory[priceHistory.length - 1].price).toLocaleString('th-TH')} ETH`
+                      ) : (
+                        '0 ETH'
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center space-x-2">
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">ปริมาณการซื้อขาย 24 ชม.</p>
+                    <p className="text-2xl font-bold">
+                      {analyticsLoading ? (
+                        <Loader2 className="animate-spin" />
+                      ) : (
+                        `${Number(volumeHistory[volumeHistory.length - 1]?.volume || 0).toLocaleString('th-TH')} ETH`
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center space-x-2">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">จำนวนผู้ถือหุ้น</p>
+                    <p className="text-2xl font-bold">
+                      {analyticsLoading ? (
+                        <Loader2 className="animate-spin" />
+                      ) : (
+                        holderHistory[holderHistory.length - 1]?.holders || 0
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center space-x-2">
+                  <Activity className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">ธุรกรรม 24 ชม.</p>
+                    <p className="text-2xl font-bold">
+                      {analyticsLoading ? (
+                        <Loader2 className="animate-spin" />
+                      ) : (
+                        tradingActivity[0]?.count || 0
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
           
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
