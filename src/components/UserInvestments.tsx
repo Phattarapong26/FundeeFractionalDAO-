@@ -23,6 +23,7 @@ export const UserInvestments = () => {
     const fetchInvestments = async () => {
       if (!account || !contract) {
         setIsLoading(false);
+        setInvestments([]);
         return;
       }
 
@@ -30,14 +31,15 @@ export const UserInvestments = () => {
         setIsLoading(true);
         const userInvestments = await contract.methods.getUserInvestments(account).call();
         
-        if (Array.isArray(userInvestments)) {
-          setInvestments(userInvestments.map((investment: any) => ({
-            id: investment.id,
-            assetId: investment.assetId,
-            amount: investment.amount,
-            timestamp: parseInt(investment.timestamp),
-            status: investment.status
-          })));
+        if (userInvestments && Array.isArray(userInvestments)) {
+          const formattedInvestments = userInvestments.map((investment: any) => ({
+            id: investment.id || '',
+            assetId: investment.assetId || '',
+            amount: investment.amount || '0',
+            timestamp: parseInt(investment.timestamp) || 0,
+            status: investment.status || 'pending'
+          }));
+          setInvestments(formattedInvestments);
         } else {
           setInvestments([]);
         }
@@ -69,7 +71,7 @@ export const UserInvestments = () => {
     );
   }
 
-  if (!Array.isArray(investments) || investments.length === 0) {
+  if (!investments || investments.length === 0) {
     return (
       <div className="text-center text-muted-foreground">
         ไม่พบข้อมูลการลงทุน
