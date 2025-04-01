@@ -220,17 +220,6 @@ const Trade = () => {
     const price = parseFloat(orderPrice);
     const amount = parseFloat(orderAmount);
     
-    // ตรวจสอบราคา
-    if (tradeType === 'buy' && price > bestPrices.bestSellPrice * 1.05) {
-      toast.error("ราคาที่กรอกสูงกว่าราคาตลาด 5%");
-      return;
-    }
-    
-    if (tradeType === 'sell' && price < bestPrices.bestBuyPrice * 0.95) {
-      toast.error("ราคาที่กรอกต่ำกว่าราคาตลาด 5%");
-      return;
-    }
-    
     // ตรวจสอบยอดคงเหลือ
     if (tradeType === 'sell' && amount > userBalance) {
       toast.error("ยอดคงเหลือไม่เพียงพอ");
