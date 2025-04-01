@@ -30,14 +30,16 @@ export const Web3Provider = ({ children }: { children: ReactNode }) => {
   const checkNetwork = async () => {
     try {
       const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-      setNetworkId(chainId);
+      // แปลง chainId จาก hex เป็น decimal
+      const decimalChainId = parseInt(chainId, 16).toString();
+      setNetworkId(decimalChainId);
       
-      if (!SUPPORTED_NETWORKS[chainId]) {
+      if (!SUPPORTED_NETWORKS[decimalChainId]) {
         toast.error(`กรุณาเชื่อมต่อกับเครือข่ายที่รองรับ: ${Object.values(SUPPORTED_NETWORKS).join(', ')}`);
         return false;
       }
       
-      toast.success(`เชื่อมต่อกับ ${SUPPORTED_NETWORKS[chainId]} สำเร็จ`);
+      toast.success(`เชื่อมต่อกับ ${SUPPORTED_NETWORKS[decimalChainId]} สำเร็จ`);
       return true;
     } catch (error) {
       console.error('Error checking network:', error);
