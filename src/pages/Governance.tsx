@@ -1,4 +1,3 @@
-
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -15,23 +14,25 @@ import {
   Loader2
 } from 'lucide-react';
 import { useWeb3 } from '@/hooks/useWeb3';
-import { castVote, executeProposal, getProposals } from '@/lib/contract/contract';
+import { castVote, executeProposal } from '@/lib/contract/contract';
 import { toast } from 'sonner';
 import PageLayout from '@/components/Layout/PageLayout';
 import { Button } from '@/components/ui/button';
 import { truncateAddress } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { Proposal } from '@/lib/contract/contract';
+import { useProposals } from '@/hooks/useProposals';
 
 const Governance = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [assetFilter, setAssetFilter] = useState('all');
-  const [proposals, setProposals] = useState<Proposal[]>([]);
-  const [loading, setLoading] = useState(true);
   const [votingInProgress, setVotingInProgress] = useState<{[key: number]: boolean}>({});
   const [executingInProgress, setExecutingInProgress] = useState<{[key: number]: boolean}>({});
   const { account, contract } = useWeb3();
   const navigate = useNavigate();
+  
+  // ใช้ useProposals hook
+  const { proposals, loading, error, refreshProposals } = useProposals();
   
   const assets = [
     { id: 'all', name: 'All Assets' },
@@ -43,25 +44,9 @@ const Governance = () => {
   ];
 
   useEffect(() => {
-    const fetchProposals = async () => {
-      if (!contract) return;
-      
-      try {
-        setLoading(true);
-        const fetchedProposals = await getProposals(contract);
-        setProposals(fetchedProposals);
-      } catch (error) {
-        console.error("Error fetching proposals:", error);
-        toast.error("Failed to load proposals");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (contract) {
-      fetchProposals();
-    }
-  }, [contract]);
+    // โหลดข้อมูลเมื่อเข้าหน้านี้โดยใช้ refreshProposals จาก hook
+    refreshProposals();
+  }, []);
 
   const handleCreateProposal = () => {
     if (!account) {
@@ -88,9 +73,8 @@ const Governance = () => {
       await castVote(contract, proposalId, support, account);
       toast.success(`Vote ${support ? 'YES' : 'NO'} cast successfully`);
       
-      // Refetch proposals to update the vote counts
-      const updatedProposals = await getProposals(contract);
-      setProposals(updatedProposals);
+      // โหลดข้อมูลใหม่
+      refreshProposals();
     } catch (error) {
       console.error("Error casting vote:", error);
       toast.error(`Failed to cast vote: ${error.message || 'Unknown error'}`);
@@ -115,9 +99,8 @@ const Governance = () => {
       await executeProposal(contract, proposalId, account);
       toast.success("Proposal executed successfully");
       
-      // Refetch proposals to update the status
-      const updatedProposals = await getProposals(contract);
-      setProposals(updatedProposals);
+      // โหลดข้อมูลใหม่
+      refreshProposals();
     } catch (error) {
       console.error("Error executing proposal:", error);
       toast.error(`Failed to execute proposal: ${error.message || 'Unknown error'}`);

@@ -315,6 +315,24 @@ export const getProposals = async (contract: FractionalDAOContract | null) => {
       creator: "0xb13b071a478ee444d2ccd6b97217438fb7c73578"
     }
   ];
+  
+  // ดึงข้อมูล proposal ที่สร้างใหม่จาก localStorage (ถ้ามี)
+  try {
+    const savedProposals = localStorage.getItem('mockProposals');
+    if (savedProposals) {
+      const userProposals = JSON.parse(savedProposals) as Proposal[];
+      console.log("Found saved proposals in localStorage:", userProposals.length);
+      
+      // เพิ่ม proposals ที่ไม่ซ้ำกับ mockProposals
+      userProposals.forEach(userProposal => {
+        if (!mockProposals.some(p => p.id === userProposal.id)) {
+          mockProposals.push(userProposal);
+        }
+      });
+    }
+  } catch (storageError) {
+    console.error("Error reading from localStorage:", storageError);
+  }
 
   // เพิ่ม proposal ใหม่ที่เพิ่งสร้าง (ถ้ามี)
   const attemptToAddNewProposal = (id: number, title: string, assetId: number) => {
@@ -342,6 +360,7 @@ export const getProposals = async (contract: FractionalDAOContract | null) => {
   };
   
   try {
+    console.log("Attempting to get proposals from blockchain...");
     // ดึงเฉพาะ event ProposalCreated
     const proposalCreatedEvents = await contract.getPastEvents('allEvents', {
       fromBlock: 0,
@@ -408,6 +427,7 @@ export const getProposals = async (contract: FractionalDAOContract | null) => {
       console.error('Error with direct proposal lookup:', directError);
     }
     
+    console.log("Returning mock proposals:", mockProposals.length);
     return mockProposals;
   }
 };
@@ -539,7 +559,41 @@ export const createProposal = async (
   if (!contract) throw new Error('Contract is not initialized');
   
   try {
-    return await contract.methods.createProposal(
+    // เพิ่ม proposal ลงในข้อมูลจำลองก่อน
+    const mockPropId = Math.floor(Math.random() * 1000) + 10; // ID สุ่มเพื่อไม่ซ้ำกับ mock data เดิม
+    console.log("Creating proposal with mockId for fallback:", mockPropId);
+    
+    // เพิ่ม proposal ใหม่
+    const newProposal: Proposal = {
+      id: mockPropId,
+      title,
+      description,
+      imageUrl,
+      assetId,
+      voteStart: Math.floor(Date.now() / 1000) - 1 * 60 * 60, // 1 ชั่วโมงที่แล้ว
+      voteEnd: Math.floor(Date.now() / 1000) + 6 * 24 * 60 * 60, // 6 วันจากนี้
+      yesVotes: 0,
+      noVotes: 0,
+      executionTime: 0,
+      executed: false,
+      passed: false,
+      executionData: executionData || "",
+      creator: from
+    };
+    
+    // เก็บ proposal ใหม่ไว้ใน localStorage เพื่อใช้เป็น fallback
+    try {
+      const savedProposals = localStorage.getItem('mockProposals');
+      const proposals = savedProposals ? JSON.parse(savedProposals) : [];
+      proposals.push(newProposal);
+      localStorage.setItem('mockProposals', JSON.stringify(proposals));
+      console.log("Saved new proposal to localStorage:", newProposal);
+    } catch (storageError) {
+      console.error("Error saving to localStorage:", storageError);
+    }
+    
+    // ส่งธุรกรรมจริงไปยัง blockchain
+    const result = await contract.methods.createProposal(
       assetId.toString(),
       title,
       description,
@@ -549,6 +603,8 @@ export const createProposal = async (
       from,
       gas: "3000000"
     });
+    
+    return result;
   } catch (error) {
     console.error("Error creating proposal:", error);
     throw error;
