@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Check, Loader2, Upload, Image, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Check, Loader2, Upload, Image, RefreshCw, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useWeb3 } from '@/hooks/useWeb3';
@@ -38,6 +38,10 @@ const CreateProposal = () => {
   useEffect(() => {
     console.log("Assets in CreateProposal:", assets);
   }, [assets]);
+
+  const handleCreateAsset = () => {
+    navigate('/create-asset');
+  };
 
   const handleRefreshAssets = async () => {
     setIsRefreshing(true);
@@ -129,6 +133,45 @@ const CreateProposal = () => {
         <div className="bg-white rounded-xl p-8 shadow-sm">
           <form onSubmit={handleSubmit}>
             <div className="space-y-6">
+              <div className="flex justify-end space-x-2 mb-4">
+                <Button 
+                  type="button" 
+                  variant="outline"
+                  onClick={handleCreateAsset}
+                  className="h-9"
+                >
+                  <Plus size={16} className="mr-1" />
+                  Create Asset
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleRefreshAssets}
+                  disabled={isRefreshing}
+                  className="h-9"
+                >
+                  <RefreshCw size={16} className={`mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  Refresh Assets
+                </Button>
+              </div>
+              
+              {assets.length > 0 && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                  <p className="text-sm text-blue-700 font-medium mb-2">
+                    Available Assets ({assets.length})
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {assets.map(asset => (
+                      <div key={asset.id} className="text-xs bg-white p-2 rounded border border-blue-100">
+                        <strong>{asset.name}</strong> ({asset.symbol})
+                        {asset.id > 2 && <span className="ml-1 text-green-600 text-[10px]">• New</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
               <div>
                 <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
                   Proposal Title*
@@ -163,35 +206,7 @@ const CreateProposal = () => {
                   <label htmlFor="assetId" className="block text-sm font-medium text-gray-700">
                     Related Asset*
                   </label>
-                  <Button 
-                    type="button" 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={handleRefreshAssets}
-                    disabled={isRefreshing}
-                    className="h-8 px-2 text-xs"
-                  >
-                    <RefreshCw size={14} className={`mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
-                    Refresh Assets
-                  </Button>
                 </div>
-                
-                {assets.length === 0 && !assetsLoading ? (
-                  <div className="border border-orange-200 bg-orange-50 rounded-lg p-3 mb-3">
-                    <p className="text-sm text-orange-700">
-                      No assets found. Please create an asset first before creating a proposal.
-                    </p>
-                    <Button
-                      type="button"
-                      variant="link"
-                      size="sm"
-                      onClick={() => navigate('/create-asset')}
-                      className="text-xs p-0 mt-1 h-auto"
-                    >
-                      Create Asset
-                    </Button>
-                  </div>
-                ) : null}
                 
                 <Select 
                   value={assetId} 
