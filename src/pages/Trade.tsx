@@ -52,6 +52,7 @@ import TradeHistory from '@/components/Trade/TradeHistory';
 import ActiveOrders from '@/components/Trade/ActiveOrders';
 import PriceChart from '@/components/Trade/PriceChart';
 import { truncateAddress, formatNumber, formatEthValue, formatTokenValue } from '@/lib/utils';
+import { FeePaymentModal } from '@/components/Platform/FeePaymentModal';
 
 const PriceInfoCard = ({ label, value, change, positive }) => {
   return (
@@ -136,7 +137,7 @@ const Trade = () => {
   
   const { assets, loading } = useAssets();
   const { account, contract, web3, connectWallet } = useWeb3();
-  const { hasPaidFee, isLoading: feeStatusLoading, payWithETH, payWithToken } = useFeeStatus();
+  const { hasPaidFee, isLoading: feeStatusLoading, payWithETH, payWithToken, refetch } = useFeeStatus();
   const navigate = useNavigate();
   
   useEffect(() => {
@@ -449,6 +450,20 @@ const Trade = () => {
                   <CardTitle>Trade</CardTitle>
                 </CardHeader>
                 <CardContent>
+                  {!hasPaidFee && (
+                    <Alert variant="warning" className="mb-4">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>ต้องชำระค่าธรรมเนียมก่อน</AlertTitle>
+                      <AlertDescription className="flex justify-between items-center flex-wrap">
+                        <span>คุณต้องชำระค่าธรรมเนียมการทำธุรกรรมครั้งเดียวเพื่อใช้แพลตฟอร์ม</span>
+                        <FeePaymentModal 
+                          onFeePaid={() => refetch()} 
+                          trigger={<Button size="sm" variant="outline" className="mt-2 sm:mt-0">ชำระค่าธรรมเนียม</Button>}
+                        />
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  
                   <Tabs defaultValue="buy" value={tradeType} onValueChange={setTradeType}>
                     <TabsList className="grid w-full grid-cols-2 mb-6">
                       <TabsTrigger value="buy">Buy</TabsTrigger>
@@ -518,17 +533,28 @@ const Trade = () => {
                           </div>
                         </div>
                         
-                        <Button 
-                          className="w-full bg-blue-600 hover:bg-blue-700"
-                          onClick={handlePlaceOrder}
-                          disabled={isPlacingOrder || !account || !selectedAsset || !hasPaidFee}
-                        >
-                          {isPlacingOrder ? (
-                            <><Loader2 size={16} className="mr-2 animate-spin" /> Processing...</>
-                          ) : (
-                            'Buy Shares'
-                          )}
-                        </Button>
+                        {hasPaidFee ? (
+                          <Button 
+                            className="w-full bg-blue-600 hover:bg-blue-700"
+                            onClick={handlePlaceOrder}
+                            disabled={isPlacingOrder || !account || !selectedAsset}
+                          >
+                            {isPlacingOrder ? (
+                              <><Loader2 size={16} className="mr-2 animate-spin" /> กำลังประมวลผล...</>
+                            ) : (
+                              'ซื้อหุ้น'
+                            )}
+                          </Button>
+                        ) : (
+                          <FeePaymentModal 
+                            onFeePaid={() => refetch()} 
+                            trigger={
+                              <Button className="w-full bg-blue-600 hover:bg-blue-700">
+                                ชำระค่าธรรมเนียมเพื่อซื้อหุ้น
+                              </Button>
+                            }
+                          />
+                        )}
                       </div>
                     </TabsContent>
                     
@@ -598,17 +624,28 @@ const Trade = () => {
                           </div>
                         </div>
                         
-                        <Button 
-                          className="w-full bg-red-600 hover:bg-red-700"
-                          onClick={handlePlaceOrder}
-                          disabled={isPlacingOrder || !account || !selectedAsset || !hasPaidFee}
-                        >
-                          {isPlacingOrder ? (
-                            <><Loader2 size={16} className="mr-2 animate-spin" /> Processing...</>
-                          ) : (
-                            'Sell Shares'
-                          )}
-                        </Button>
+                        {hasPaidFee ? (
+                          <Button 
+                            className="w-full bg-red-600 hover:bg-red-700"
+                            onClick={handlePlaceOrder}
+                            disabled={isPlacingOrder || !account || !selectedAsset}
+                          >
+                            {isPlacingOrder ? (
+                              <><Loader2 size={16} className="mr-2 animate-spin" /> กำลังประมวลผล...</>
+                            ) : (
+                              'ขายหุ้น'
+                            )}
+                          </Button>
+                        ) : (
+                          <FeePaymentModal 
+                            onFeePaid={() => refetch()} 
+                            trigger={
+                              <Button className="w-full bg-red-600 hover:bg-red-700">
+                                ชำระค่าธรรมเนียมเพื่อขายหุ้น
+                              </Button>
+                            }
+                          />
+                        )}
                       </div>
                     </TabsContent>
                   </Tabs>
