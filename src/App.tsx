@@ -3,6 +3,7 @@ import './App.css';
 import { Toaster } from '@/components/ui/sonner';
 import { Web3Provider } from '@/hooks/useWeb3';
 import { TransactionsProvider } from '@/hooks/useTransactions';
+import FundeeTutorial from '@/components/FundeeTutorial';
 
 // Pages
 import Index from './pages/Index';
@@ -38,6 +39,7 @@ function App() {
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
+          <FundeeTutorial />
         </Router>
       </TransactionsProvider>
     </Web3Provider>

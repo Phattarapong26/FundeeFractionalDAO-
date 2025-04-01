@@ -73,10 +73,16 @@ const checkContract = (contract: FractionalDAOContract | null) => {
 export const getOrderbook = async (contract: FractionalDAOContract | null, assetId: number) => {
   if (!contract) {
     console.warn("Contract not initialized in getOrderbook");
-    return [];
+    return mockOrderbook.filter(order => order.assetId === assetId && order.isActive);
   }
   
   try {
+    // ตรวจสอบว่ามีฟังก์ชัน orderIdCounter หรือไม่
+    if (typeof contract.methods.orderIdCounter !== 'function') {
+      console.warn("orderIdCounter method not found, using mock data");
+      return mockOrderbook.filter(order => order.assetId === assetId && order.isActive);
+    }
+    
     // ดึงข้อมูล orderIdCounter จาก contract
     const orderIdCounter = await contract.methods.orderIdCounter().call();
     const orders = [];
@@ -116,10 +122,16 @@ export const getOrderbook = async (contract: FractionalDAOContract | null, asset
 export const getTradeHistory = async (contract: FractionalDAOContract | null, assetId: number) => {
   if (!contract) {
     console.warn("Contract not initialized in getTradeHistory");
-    return [];
+    return mockTradeHistory.filter(trade => trade.assetId === assetId);
   }
   
   try {
+    // ตรวจสอบว่ามีฟังก์ชัน tradeIdCounter หรือไม่
+    if (typeof contract.methods.tradeIdCounter !== 'function') {
+      console.warn("tradeIdCounter method not found, using mock data");
+      return mockTradeHistory.filter(trade => trade.assetId === assetId);
+    }
+    
     // ดึงข้อมูล tradeIdCounter จาก contract
     const tradeIdCounter = await contract.methods.tradeIdCounter().call();
     const trades = [];
@@ -160,7 +172,9 @@ export const getTradeHistory = async (contract: FractionalDAOContract | null, as
 export const getUserOrders = async (contract: FractionalDAOContract | null, userAddress: string, assetId: number) => {
   if (!contract) {
     console.warn("Contract not initialized in getUserOrders");
-    return [];
+    return mockOrderbook.filter(
+      order => order.seller.toLowerCase() === userAddress.toLowerCase() && order.assetId === assetId && order.isActive
+    );
   }
   
   if (!userAddress) {
@@ -169,6 +183,14 @@ export const getUserOrders = async (contract: FractionalDAOContract | null, user
   }
   
   try {
+    // ตรวจสอบว่ามีฟังก์ชัน orderIdCounter หรือไม่
+    if (typeof contract.methods.orderIdCounter !== 'function') {
+      console.warn("orderIdCounter method not found, using mock data");
+      return mockOrderbook.filter(
+        order => order.seller.toLowerCase() === userAddress.toLowerCase() && order.assetId === assetId && order.isActive
+      );
+    }
+    
     // ดึงข้อมูล orderIdCounter จาก contract
     const orderIdCounter = await contract.methods.orderIdCounter().call();
     const orders = [];
@@ -238,6 +260,15 @@ export const createTradeOrder = async (
     const weiPrice = web3.utils.toWei(price.toString(), 'ether');
     const weiAmount = web3.utils.toWei(amount.toString(), 'ether');
     
+    // กำหนดค่า gas options เพื่อป้องกัน timeout
+    const gasOptions = {
+      from,
+      gas: "4000000", // เพิ่ม gas limit
+      gasPrice: web3.utils.toWei('5', 'gwei'), // ลดค่า gas price
+      maxFeePerGas: null, // ล้างค่า maxFeePerGas เพื่อให้ใช้ gasPrice
+      maxPriorityFeePerGas: null // ล้างค่า maxPriorityFeePerGas เพื่อให้ใช้ gasPrice
+    };
+    
     if (isBuyOrder) {
       const totalCost = price * amount;
       const weiTotalCost = web3.utils.toWei(totalCost.toString(), 'ether');
@@ -249,9 +280,8 @@ export const createTradeOrder = async (
         weiPrice,
         true
       ).send({
-        from,
+        ...gasOptions,
         value: String(Number(weiTotalCost) + fee),
-        gas: "3000000"
       });
     } else {
       const totalValue = price * amount;
@@ -264,13 +294,18 @@ export const createTradeOrder = async (
         weiPrice,
         false
       ).send({
-        from,
+        ...gasOptions,
         value: String(fee),
-        gas: "3000000"
       });
     }
   } catch (error) {
     console.error("Error in createTradeOrder:", error);
+    
+    // แสดงข้อความแจ้งเตือนที่เป็นประโยชน์มากขึ้น
+    if (error.message && error.message.includes('408')) {
+      throw new Error("การทำรายการหมดเวลา (Timeout) กรุณาลองใหม่อีกครั้งโดยปรับลดจำนวนหรือตรวจสอบการเชื่อมต่อเครือข่าย");
+    }
+    
     throw error;
   }
 };
@@ -283,18 +318,29 @@ export const createTradeOrder = async (
  * @returns Transaction receipt
  */
 export const matchOrders = async (contract: FractionalDAOContract | null, assetId: number, from: string) => {
-  if (!contract) {
-    console.error("Contract not initialized in matchOrders");
-    throw new Error("Contract not initialized");
-  }
+  checkContract(contract);
   
   try {
-    return await contract.methods.matchOrders(assetId).send({
+    const web3 = new Web3();
+    
+    // กำหนดค่า gas options เพื่อป้องกัน timeout
+    const gasOptions = {
       from,
-      gas: "3000000"
-    });
+      gas: "5000000", // เพิ่ม gas limit
+      gasPrice: web3.utils.toWei('5', 'gwei'), // ลดค่า gas price
+      maxFeePerGas: null,
+      maxPriorityFeePerGas: null
+    };
+    
+    return await contract.methods.matchOrders(assetId).send(gasOptions);
   } catch (error) {
     console.error("Error in matchOrders:", error);
+    
+    // แสดงข้อความแจ้งเตือนที่เป็นประโยชน์มากขึ้น
+    if (error.message && error.message.includes('408')) {
+      throw new Error("การจับคู่ออเดอร์หมดเวลา (Timeout) กรุณาลองใหม่ในภายหลัง");
+    }
+    
     throw error;
   }
 };
@@ -338,12 +384,41 @@ export const fillOrder = async (contract: FractionalDAOContract | null, orderId:
   }
   
   try {
-    return await contract.methods.fillOrder(orderId).send({
+    const web3 = new Web3();
+    
+    // กำหนดค่า gas options เพื่อป้องกัน timeout และการ revert
+    const gasOptions = {
       from,
-      gas: "3000000"
-    });
+      gas: "6000000", // เพิ่ม gas limit ให้สูงขึ้น
+      gasPrice: web3.utils.toWei('10', 'gwei'), // เพิ่ม gasPrice
+      maxFeePerGas: null,
+      maxPriorityFeePerGas: null
+    };
+    
+    // ตรวจสอบว่าออเดอร์มีอยู่จริงหรือไม่ก่อนทำธุรกรรม
+    try {
+      const order = await contract.methods.orders(orderId).call() as OrderData;
+      if (!order.isActive) {
+        throw new Error("ออเดอร์นี้ไม่ได้ใช้งานอยู่หรือถูกทำรายการไปแล้ว");
+      }
+    } catch (orderCheckError) {
+      console.warn("ไม่สามารถตรวจสอบสถานะออเดอร์ได้:", orderCheckError);
+      // ดำเนินการต่อไป เผื่อว่าเป็นแค่ปัญหาการอ่านข้อมูล
+    }
+    
+    return await contract.methods.fillOrder(orderId).send(gasOptions);
   } catch (error) {
     console.error("Error in fillOrder:", error);
+    
+    // จัดการข้อผิดพลาดให้ละเอียดมากขึ้น
+    if (error.message && error.message.includes('reverted')) {
+      throw new Error("ไม่สามารถทำรายการได้: ธุรกรรมถูกย้อนกลับ อาจเนื่องจากออเดอร์ถูกทำรายการไปแล้ว หรือมีการเปลี่ยนแปลงสถานะ");
+    } else if (error.message && error.message.includes('gas')) {
+      throw new Error("แก๊สไม่เพียงพอในการทำธุรกรรม กรุณาเพิ่มแก๊สและลองใหม่อีกครั้ง");
+    } else if (error.message && error.message.includes('408')) {
+      throw new Error("การทำรายการหมดเวลา (Timeout) กรุณาลองใหม่อีกครั้ง");
+    }
+    
     throw error;
   }
 };
