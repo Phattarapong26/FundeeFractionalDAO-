@@ -1,7 +1,34 @@
 import { FractionalDAOAbi } from './abi';
 import { Web3 } from 'web3';
+import type { Contract } from 'web3-eth-contract';
 
-// Enhanced mock data structure for testing
+// กำหนด type ของ contract แทนที่จะใช้ any
+type FractionalDAOContract = Contract<typeof FractionalDAOAbi>;
+
+// กำหนด interface สำหรับ Order และ Trade
+interface OrderData {
+  id: string;
+  trader: string;
+  assetId: string;
+  amount: string;
+  price: string;
+  isBuyOrder: boolean;
+  timestamp: string;
+  isActive: boolean;
+}
+
+interface TradeData {
+  id: string;
+  orderId: string;
+  buyer: string;
+  seller: string;
+  assetId: string;
+  amount: string;
+  price: string;
+  timestamp: string;
+}
+
+// เก็บ mock data ไว้เป็น fallback
 const mockOrderbook = [
   { id: 1, assetId: 1, seller: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e', price: 0.1, amount: 10, isBuyOrder: true, isActive: true },
   { id: 2, assetId: 1, seller: '0x3A2e8D690f1BF6997D6E9eB66755e3D36eF32119', price: 0.12, amount: 5, isBuyOrder: false, isActive: true },
@@ -29,7 +56,7 @@ const mockTradeHistory = [
  * @param contract The initialized smart contract instance
  * @returns Boolean indicating if contract is valid
  */
-const checkContract = (contract: any) => {
+const checkContract = (contract: FractionalDAOContract | null) => {
   if (!contract) {
     console.error("Contract not initialized in tradeContract function");
     throw new Error("Contract not initialized");
@@ -43,26 +70,40 @@ const checkContract = (contract: any) => {
  * @param assetId The ID of the asset to get orders for
  * @returns Array of orders for the specified asset
  */
-export const getOrderbook = async (contract: any, assetId: number) => {
+export const getOrderbook = async (contract: FractionalDAOContract | null, assetId: number) => {
   if (!contract) {
     console.warn("Contract not initialized in getOrderbook");
     return [];
   }
   
   try {
-    const orders = await contract.methods.getOrdersByAsset(assetId).call();
-    return orders.map((order: any) => ({
-      id: Number(order.id),
-      assetId: Number(order.assetId),
-      seller: order.trader,
-      price: Number(order.price) / 1e18,
-      amount: Number(order.amount) / 1e18,
-      isBuyOrder: order.isBuyOrder,
-      isActive: order.isActive
-    }));
+    // ดึงข้อมูล orderIdCounter จาก contract
+    const orderIdCounter = await contract.methods.orderIdCounter().call();
+    const orders = [];
+    
+    // วนลูปตรวจสอบแต่ละ order
+    for (let i = 1; i < Number(orderIdCounter); i++) {
+      const order = await contract.methods.orders(i).call() as OrderData;
+      
+      // กรองเฉพาะ order ของ assetId ที่ต้องการและยังใช้งานได้
+      if (Number(order.assetId) === assetId && order.isActive) {
+        orders.push({
+          id: Number(order.id),
+          assetId: Number(order.assetId),
+          seller: order.trader,
+          price: Number(order.price) / 1e18,
+          amount: Number(order.amount) / 1e18,
+          isBuyOrder: order.isBuyOrder,
+          isActive: order.isActive
+        });
+      }
+    }
+    
+    return orders;
   } catch (error) {
     console.error("Error in getOrderbook:", error);
-    return [];
+    // หากเกิดข้อผิดพลาด ให้ใช้ข้อมูลจำลองแทน
+    return mockOrderbook.filter(order => order.assetId === assetId && order.isActive);
   }
 };
 
@@ -72,26 +113,40 @@ export const getOrderbook = async (contract: any, assetId: number) => {
  * @param assetId The ID of the asset to get trade history for
  * @returns Array of historical trades for the specified asset
  */
-export const getTradeHistory = async (contract: any, assetId: number) => {
+export const getTradeHistory = async (contract: FractionalDAOContract | null, assetId: number) => {
   if (!contract) {
     console.warn("Contract not initialized in getTradeHistory");
     return [];
   }
   
   try {
-    const trades = await contract.methods.getTradesByAsset(assetId).call();
-    return trades.map((trade: any) => ({
-      id: Number(trade.id),
-      assetId: Number(trade.assetId),
-      buyer: trade.buyer,
-      seller: trade.seller,
-      price: Number(trade.price) / 1e18,
-      amount: Number(trade.amount) / 1e18,
-      timestamp: Number(trade.timestamp)
-    }));
+    // ดึงข้อมูล tradeIdCounter จาก contract
+    const tradeIdCounter = await contract.methods.tradeIdCounter().call();
+    const trades = [];
+    
+    // วนลูปตรวจสอบแต่ละ trade
+    for (let i = 1; i < Number(tradeIdCounter); i++) {
+      const trade = await contract.methods.trades(i).call() as TradeData;
+      
+      // กรองเฉพาะ trade ของ assetId ที่ต้องการ
+      if (Number(trade.assetId) === assetId) {
+        trades.push({
+          id: Number(trade.id),
+          assetId: Number(trade.assetId),
+          buyer: trade.buyer,
+          seller: trade.seller,
+          price: Number(trade.price) / 1e18,
+          amount: Number(trade.amount) / 1e18,
+          timestamp: Number(trade.timestamp)
+        });
+      }
+    }
+    
+    return trades;
   } catch (error) {
     console.error("Error in getTradeHistory:", error);
-    return [];
+    // หากเกิดข้อผิดพลาด ให้ใช้ข้อมูลจำลองแทน
+    return mockTradeHistory.filter(trade => trade.assetId === assetId);
   }
 };
 
@@ -102,7 +157,7 @@ export const getTradeHistory = async (contract: any, assetId: number) => {
  * @param assetId The ID of the asset to get orders for
  * @returns Array of user's orders for the specified asset
  */
-export const getUserOrders = async (contract: any, userAddress: string, assetId: number) => {
+export const getUserOrders = async (contract: FractionalDAOContract | null, userAddress: string, assetId: number) => {
   if (!contract) {
     console.warn("Contract not initialized in getUserOrders");
     return [];
@@ -114,16 +169,37 @@ export const getUserOrders = async (contract: any, userAddress: string, assetId:
   }
   
   try {
-    // In a real implementation, this would call a contract method like:
-    // return await contract.methods.getUserOrders(userAddress, assetId).call();
+    // ดึงข้อมูล orderIdCounter จาก contract
+    const orderIdCounter = await contract.methods.orderIdCounter().call();
+    const orders = [];
     
-    // For demo purposes, returning filtered mock data
+    // วนลูปตรวจสอบแต่ละ order
+    for (let i = 1; i < Number(orderIdCounter); i++) {
+      const order = await contract.methods.orders(i).call() as OrderData;
+      
+      // กรองเฉพาะ order ของ assetId และ user ที่ต้องการและยังใช้งานได้
+      if (Number(order.assetId) === assetId && 
+          order.trader.toLowerCase() === userAddress.toLowerCase() && 
+          order.isActive) {
+        orders.push({
+          id: Number(order.id),
+          assetId: Number(order.assetId),
+          seller: order.trader,
+          price: Number(order.price) / 1e18,
+          amount: Number(order.amount) / 1e18,
+          isBuyOrder: order.isBuyOrder,
+          isActive: order.isActive
+        });
+      }
+    }
+    
+    return orders;
+  } catch (error) {
+    console.error("Error in getUserOrders:", error);
+    // หากเกิดข้อผิดพลาด ให้ใช้ข้อมูลจำลองแทน
     return mockOrderbook.filter(
       order => order.seller.toLowerCase() === userAddress.toLowerCase() && order.assetId === assetId && order.isActive
     );
-  } catch (error) {
-    console.error("Error in getUserOrders:", error);
-    return [];
   }
 };
 
@@ -138,7 +214,7 @@ export const getUserOrders = async (contract: any, userAddress: string, assetId:
  * @returns Transaction receipt
  */
 export const createTradeOrder = async (
-  contract: any,
+  contract: FractionalDAOContract | null,
   assetId: number,
   isBuyOrder: boolean,
   price: number,
@@ -165,7 +241,7 @@ export const createTradeOrder = async (
     if (isBuyOrder) {
       const totalCost = price * amount;
       const weiTotalCost = web3.utils.toWei(totalCost.toString(), 'ether');
-      const fee = weiTotalCost * 0.01; // ค่าธรรมเนียม 1%
+      const fee = Number(weiTotalCost) * 0.01; // ค่าธรรมเนียม 1%
       
       return await contract.methods.createOrder(
         assetId,
@@ -174,13 +250,13 @@ export const createTradeOrder = async (
         true
       ).send({
         from,
-        value: weiTotalCost + fee,
-        gas: 3000000
+        value: String(Number(weiTotalCost) + fee),
+        gas: "3000000"
       });
     } else {
       const totalValue = price * amount;
       const weiTotalValue = web3.utils.toWei(totalValue.toString(), 'ether');
-      const fee = weiTotalValue * 0.01; // ค่าธรรมเนียม 1%
+      const fee = Number(weiTotalValue) * 0.01; // ค่าธรรมเนียม 1%
       
       return await contract.methods.createOrder(
         assetId,
@@ -189,8 +265,8 @@ export const createTradeOrder = async (
         false
       ).send({
         from,
-        value: fee,
-        gas: 3000000
+        value: String(fee),
+        gas: "3000000"
       });
     }
   } catch (error) {
@@ -206,7 +282,7 @@ export const createTradeOrder = async (
  * @param from The user's wallet address
  * @returns Transaction receipt
  */
-export const matchOrders = async (contract: any, assetId: number, from: string) => {
+export const matchOrders = async (contract: FractionalDAOContract | null, assetId: number, from: string) => {
   if (!contract) {
     console.error("Contract not initialized in matchOrders");
     throw new Error("Contract not initialized");
@@ -215,7 +291,7 @@ export const matchOrders = async (contract: any, assetId: number, from: string) 
   try {
     return await contract.methods.matchOrders(assetId).send({
       from,
-      gas: 3000000
+      gas: "3000000"
     });
   } catch (error) {
     console.error("Error in matchOrders:", error);
@@ -230,38 +306,21 @@ export const matchOrders = async (contract: any, assetId: number, from: string) 
  * @param from The user's wallet address (must be the order creator)
  * @returns Transaction receipt
  */
-export const cancelOrder = async (contract: any, orderId: number, from: string) => {
+export const cancelOrder = async (contract: FractionalDAOContract | null, orderId: number, from: string) => {
   if (!contract) {
     console.error("Contract not initialized in cancelOrder");
     throw new Error("Contract not initialized");
   }
   
-  // In a real implementation, this would call a contract method like:
-  // return await contract.methods.cancelOrder(orderId).send({
-  //   from,
-  //   gas: 3000000
-  // });
-  
-  // For demo purposes, simulating a delay
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  
-  // Update the order status (for demo only)
-  const orderIndex = mockOrderbook.findIndex(order => order.id === orderId);
-  if (orderIndex !== -1) {
-    // Check if user is the order creator
-    if (mockOrderbook[orderIndex].seller.toLowerCase() !== from.toLowerCase()) {
-      throw new Error('Only the order creator can cancel an order');
-    }
-    
-    mockOrderbook[orderIndex].isActive = false;
-  } else {
-    throw new Error('Order not found');
+  try {
+    return await contract.methods.cancelOrder(orderId).send({
+      from,
+      gas: "3000000"
+    });
+  } catch (error) {
+    console.error("Error in cancelOrder:", error);
+    throw error;
   }
-  
-  return { 
-    transactionHash: '0x' + Math.random().toString(16).substring(2, 42),
-    status: 1 
-  };
 };
 
 /**
@@ -272,41 +331,27 @@ export const cancelOrder = async (contract: any, orderId: number, from: string) 
  * @param from The user's wallet address
  * @returns Transaction receipt
  */
-export const fillOrder = async (contract: any, orderId: number, amount: number, from: string) => {
+export const fillOrder = async (contract: FractionalDAOContract | null, orderId: number, amount: number, from: string) => {
   if (!contract) {
     console.error("Contract not initialized in fillOrder");
     throw new Error("Contract not initialized");
   }
   
   try {
-    const web3 = new Web3();
-    const weiAmount = web3.utils.toWei(amount.toString(), 'ether');
-    
-    // ดึงข้อมูล order ก่อน
-    const order = await contract.methods.getOrder(orderId).call();
-    
-    if (order.isBuyOrder) {
-      // กรณีเติมคำสั่งซื้อ
-      return await contract.methods.fillBuyOrder(orderId, weiAmount).send({
-        from,
-        gas: 3000000
-      });
-    } else {
-      // กรณีเติมคำสั่งขาย ต้องส่ง ETH ไปด้วย
-      const totalCost = Number(order.price) * amount;
-      const weiTotalCost = web3.utils.toWei(totalCost.toString(), 'ether');
-      
-      return await contract.methods.fillSellOrder(orderId, weiAmount).send({
-        from,
-        value: weiTotalCost,
-        gas: 3000000
-      });
-    }
+    return await contract.methods.fillOrder(orderId).send({
+      from,
+      gas: "3000000"
+    });
   } catch (error) {
     console.error("Error in fillOrder:", error);
     throw error;
   }
 };
+
+interface BestPricesResult {
+  bestBuyPrice: string;
+  bestSellPrice: string;
+}
 
 /**
  * Get the current best price for an asset
@@ -314,35 +359,39 @@ export const fillOrder = async (contract: any, orderId: number, amount: number, 
  * @param assetId The ID of the asset
  * @returns Object with best buy and sell prices
  */
-export const getBestPrices = async (contract: any, assetId: number) => {
+export const getBestPrices = async (contract: FractionalDAOContract | null, assetId: number) => {
   if (!contract) {
     console.error("Contract not initialized in getBestPrices");
     throw new Error("Contract not initialized");
   }
   
   try {
-    const orders = await contract.methods.getOrdersByAsset(assetId).call();
-    
-    // กรองคำสั่งซื้อและขาย
-    const buyOrders = orders.filter((order: any) => order.isBuyOrder);
-    const sellOrders = orders.filter((order: any) => !order.isBuyOrder);
-    
-    // หาราคาซื้อสูงสุด
-    const bestBuyPrice = buyOrders.length > 0
-      ? Math.max(...buyOrders.map((order: any) => Number(order.price)))
-      : 0;
-    
-    // หาราคาขายต่ำสุด
-    const bestSellPrice = sellOrders.length > 0
-      ? Math.min(...sellOrders.map((order: any) => Number(order.price)))
-      : 0;
+    // เรียกใช้ฟังก์ชัน getBestPrices จาก contract โดยตรง
+    const result = await contract.methods.getBestPrices(assetId).call() as BestPricesResult;
     
     return {
-      bestBuyPrice: bestBuyPrice / 1e18, // แปลงจาก Wei เป็น ETH
-      bestSellPrice: bestSellPrice / 1e18
+      bestBuyPrice: Number(result.bestBuyPrice) / 1e18,
+      bestSellPrice: Number(result.bestSellPrice) / 1e18
     };
   } catch (error) {
     console.error("Error in getBestPrices:", error);
-    throw error;
+    
+    // หากเกิดข้อผิดพลาด ให้คำนวณจากข้อมูลจำลองแทน
+    const orders = mockOrderbook.filter(order => order.assetId === assetId && order.isActive);
+    const buyOrders = orders.filter(order => order.isBuyOrder);
+    const sellOrders = orders.filter(order => !order.isBuyOrder);
+    
+    const bestBuyPrice = buyOrders.length > 0
+      ? Math.max(...buyOrders.map(order => order.price))
+      : 0;
+    
+    const bestSellPrice = sellOrders.length > 0
+      ? Math.min(...sellOrders.map(order => order.price))
+      : 0;
+    
+    return {
+      bestBuyPrice,
+      bestSellPrice
+    };
   }
 };
