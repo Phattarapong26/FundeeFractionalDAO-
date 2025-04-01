@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { useMobile } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { ChevronLeft, ChevronRight, X, HelpCircle, Home, Coins, BarChart2, Layers, FileText, Vote, PieChart, Gift, DollarSign, Menu } from 'lucide-react';
 
 // ข้อมูลบทเรียนและฟีเจอร์ต่างๆ
@@ -17,7 +17,7 @@ const tutorialSteps = [
     id: 'welcome',
     title: 'ยินดีต้อนรับสู่ Fundee DAO',
     description: 'แพลตฟอร์มสำหรับการลงทุนแบบเศษส่วนในสินทรัพย์และการจัดการผ่านองค์กรอิสระแบบกระจายอำนาจ (DAO) บนเครือข่ายบล็อกเชน',
-    image: '/mascot/welcome.png',
+    image: '../../public/mascot/fundee.gif',
     icon: <Home className="w-5 h-5" />,
     detailedInfo: [
       'Fundee DAO ช่วยให้คุณสามารถลงทุนในสินทรัพย์มูลค่าสูงได้ แม้จะมีเงินทุนจำกัด ผ่านการแบ่งเศษส่วนความเป็นเจ้าของ',
@@ -33,7 +33,7 @@ const tutorialSteps = [
     id: 'tokens',
     title: 'โทเคนแพลตฟอร์ม FUNDFA',
     description: 'FUNDFA คือโทเคนของแพลตฟอร์มที่ใช้สำหรับการโหวตและการชำระค่าธรรมเนียม มีความสำคัญในระบบนิเวศของเรา',
-    image: '/mascot/tokens.png',
+    image: '../../public/mascot/fundee.gif',
     icon: <Coins className="w-5 h-5" />,
     detailedInfo: [
       'FUNDFA เป็นโทเคนมาตรฐาน ERC20 ที่สามารถซื้อขายและแลกเปลี่ยนได้',
@@ -50,7 +50,7 @@ const tutorialSteps = [
     id: 'assets',
     title: 'การเลือกและเรียกดูสินทรัพย์',
     description: 'เรียกดูและเลือกสินทรัพย์ที่มีการแบ่งเป็นเศษส่วนเพื่อลงทุน มีสินทรัพย์หลากหลายประเภทให้เลือกตามความสนใจ',
-    image: '/mascot/assets.png',
+    image: '../../public/mascot/fundee.gif',
     icon: <Layers className="w-5 h-5" />,
     detailedInfo: [
       'สินทรัพย์แต่ละรายการจะมีข้อมูลเกี่ยวกับราคาต่อเศษส่วน, จำนวนเศษส่วนทั้งหมด, อัตราผลตอบแทน (APY) และกำหนดเวลาระดมทุน',
@@ -68,7 +68,7 @@ const tutorialSteps = [
     id: 'fees',
     title: 'การชำระค่าธรรมเนียม',
     description: 'เข้าใจระบบค่าธรรมเนียมของแพลตฟอร์มและวิธีการชำระก่อนทำธุรกรรม',
-    image: '/mascot/fees.png',
+    image: '../../public/mascot/fundee.gif',
     icon: <DollarSign className="w-5 h-5" />,
     detailedInfo: [
       'ค่าธรรมเนียมแก๊สจำเป็นสำหรับการทำธุรกรรมบนบล็อกเชน คุณสามารถชำระได้สองวิธี:',
@@ -86,7 +86,7 @@ const tutorialSteps = [
     id: 'investing',
     title: 'การลงทุนในสินทรัพย์',
     description: 'เรียนรู้วิธีการซื้อเศษส่วนของสินทรัพย์และกลายเป็นเจ้าของร่วม',
-    image: '/mascot/invest.png',
+    image: '../../public/mascot/fundee.gif',
     icon: <PieChart className="w-5 h-5" />,
     detailedInfo: [
       'ขั้นตอนการลงทุน:',
@@ -105,7 +105,7 @@ const tutorialSteps = [
     id: 'proposals',
     title: 'การสร้างและโหวตข้อเสนอ',
     description: 'มีส่วนร่วมในการตัดสินใจเกี่ยวกับการจัดการสินทรัพย์ผ่านระบบธรรมาภิบาลแบบกระจายอำนาจ',
-    image: '/mascot/proposals.png',
+    image: '../../public/mascot/fundee.gif',
     icon: <Vote className="w-5 h-5" />,
     detailedInfo: [
       'ในฐานะเจ้าของร่วม คุณสามารถสร้างข้อเสนอเกี่ยวกับการจัดการสินทรัพย์ได้ เช่น:',
@@ -126,7 +126,7 @@ const tutorialSteps = [
     id: 'trading',
     title: 'การซื้อขายเศษส่วน',
     description: 'ซื้อขายเศษส่วนของสินทรัพย์กับผู้ใช้รายอื่นผ่านระบบการซื้อขายบนแพลตฟอร์ม',
-    image: '/mascot/trading.png',
+    image: '../../public/mascot/fundee.gif',
     icon: <BarChart2 className="w-5 h-5" />,
     detailedInfo: [
       'นอกจากการซื้อเศษส่วนโดยตรงจากการระดมทุน คุณยังสามารถซื้อขายกับผู้ใช้รายอื่นได้:',
@@ -146,7 +146,7 @@ const tutorialSteps = [
     id: 'rewards',
     title: 'การรับผลตอบแทนและเงินปันผล',
     description: 'รับผลตอบแทนตามอัตรา APY และเงินปันผลจากสินทรัพย์ที่คุณลงทุน',
-    image: '/mascot/rewards.png',
+    image: '../../public/mascot/fundee.gif',
     icon: <Gift className="w-5 h-5" />,
     detailedInfo: [
       'เจ้าของเศษส่วนจะได้รับผลตอบแทนในสองรูปแบบ:',
@@ -164,7 +164,7 @@ const tutorialSteps = [
     id: 'contract',
     title: 'การทำงานของสัญญาอัจฉริยะ',
     description: 'เรียนรู้เกี่ยวกับสัญญาอัจฉริยะที่ใช้ในแพลตฟอร์มและวิธีการทำงานเบื้องหลัง',
-    image: '/mascot/contract.png',
+    image: '../../public/mascot/fundee.gif',
     icon: <FileText className="w-5 h-5" />,
     detailedInfo: [
       'แพลตฟอร์ม Fundee DAO ทำงานบนพื้นฐานของสัญญาอัจฉริยะหลักสองส่วน:',
@@ -189,7 +189,7 @@ const FundeeTutorial = ({ onComplete }: FundeeTutorialProps) => {
   const [askForTutorial, setAskForTutorial] = useState(true);
   const [currentStep, setCurrentStep] = useState(0);
   const [showQuickAccess, setShowQuickAccess] = useState(false);
-  const isMobile = useMobile();
+  const isMobile = useIsMobile();
   
   // ตรวจสอบว่าเป็นผู้ใช้ใหม่หรือไม่
   useEffect(() => {
@@ -273,7 +273,7 @@ const FundeeTutorial = ({ onComplete }: FundeeTutorialProps) => {
             </DialogTitle>
             <div className="flex justify-center my-3">
               <img 
-                src="/mascot/fundee-mascot.png" 
+                src="../../public/mascot/fundee.gif" 
                 alt="Fundee DAO Mascot" 
                 className="w-24 h-24 object-contain"
               />
@@ -314,7 +314,7 @@ const FundeeTutorial = ({ onComplete }: FundeeTutorialProps) => {
             </DialogTitle>
             <div className="flex justify-center my-4">
               <img 
-                src="/mascot/fundee-mascot.png" 
+                src="../../public/mascot/fundee.gif" 
                 alt="Fundee DAO Mascot" 
                 className="w-32 h-32 object-contain animate-bounce"
               />
@@ -365,7 +365,7 @@ const FundeeTutorial = ({ onComplete }: FundeeTutorialProps) => {
             </DialogTitle>
             <div className="flex justify-center my-4">
               <img 
-                src={tutorialSteps[currentStep].image || "/mascot/fundee-mascot.png"} 
+                src={tutorialSteps[currentStep].image || "../../public/mascot/fundee.gif"} 
                 alt={`Fundee DAO - ${tutorialSteps[currentStep].title}`} 
                 className="w-40 h-40 object-contain"
               />
