@@ -101,6 +101,7 @@ export const getAssets = async (contract: FractionalDAOContract | null) => {
   }
 
   try {
+    console.log('Fetching assets from contract events...');
     // ดึงข้อมูล assets จาก event AssetCreated
     const assetCreatedEvents = await contract.getPastEvents('allEvents', {
       fromBlock: 0,
@@ -108,22 +109,39 @@ export const getAssets = async (contract: FractionalDAOContract | null) => {
       filter: { event: 'AssetCreated' }
     });
 
+    console.log('Asset events found:', assetCreatedEvents.length);
+    console.log('Asset events:', assetCreatedEvents);
+
     // ดึงข้อมูลเพิ่มเติมของแต่ละ asset
     const assets = await Promise.all(
       assetCreatedEvents
         .filter((event): event is EventLog => typeof event !== 'string' && 'returnValues' in event)
         .map(async (event: EventLog) => {
           const assetId = event.returnValues.assetId as string;
-          const asset = await contract.methods.getAsset(assetId).call();
-          return {
-            ...asset,
-            id: Number(assetId),
-            imageUrl: `https://source.unsplash.com/random/800x600?asset=${assetId}`,
-          };
+          console.log(`Fetching details for asset ID: ${assetId}`);
+          
+          try {
+            const asset = await contract.methods.getAsset(assetId).call();
+            console.log(`Asset ${assetId} data:`, asset);
+            
+            // สร้าง asset object พร้อมข้อมูลเพิ่มเติม
+            return {
+              ...asset,
+              id: Number(assetId),
+              imageUrl: `https://source.unsplash.com/random/800x600?asset=${assetId}`,
+            };
+          } catch (error) {
+            console.error(`Error fetching asset ${assetId}:`, error);
+            return null;
+          }
         })
     );
 
-    return assets;
+    // กรองออก assets ที่ null (กรณีที่เกิด error ระหว่างการดึงข้อมูล)
+    const validAssets = assets.filter(asset => asset !== null);
+    console.log('Valid assets found:', validAssets.length);
+    
+    return validAssets;
   } catch (error: unknown) {
     console.error('Error fetching assets:', error);
     if (error instanceof Error && error.message.includes('Internal JSON-RPC error')) {

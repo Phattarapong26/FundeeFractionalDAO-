@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Check, Loader2, Upload, Image } from 'lucide-react';
+import { ArrowLeft, Check, Loader2, Upload, Image, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useWeb3 } from '@/hooks/useWeb3';
@@ -29,11 +28,29 @@ const CreateProposal = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [termsAgreed, setTermsAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const { account, contract } = useWeb3();
-  const { assets, loading: assetsLoading } = useAssets();
+  const { assets, loading: assetsLoading, refetch } = useAssets();
   const navigate = useNavigate();
   
   const handleImageUpload = createImageUploadHandler(setImageUrl, setIsUploading);
+
+  useEffect(() => {
+    console.log("Assets in CreateProposal:", assets);
+  }, [assets]);
+
+  const handleRefreshAssets = async () => {
+    setIsRefreshing(true);
+    try {
+      await refetch();
+      toast.success("Assets refreshed successfully");
+    } catch (error) {
+      console.error("Error refreshing assets:", error);
+      toast.error("Failed to refresh assets");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -142,13 +159,44 @@ const CreateProposal = () => {
               </div>
               
               <div>
-                <label htmlFor="assetId" className="block text-sm font-medium text-gray-700 mb-1">
-                  Related Asset*
-                </label>
+                <div className="flex justify-between items-center mb-1">
+                  <label htmlFor="assetId" className="block text-sm font-medium text-gray-700">
+                    Related Asset*
+                  </label>
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={handleRefreshAssets}
+                    disabled={isRefreshing}
+                    className="h-8 px-2 text-xs"
+                  >
+                    <RefreshCw size={14} className={`mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
+                    Refresh Assets
+                  </Button>
+                </div>
+                
+                {assets.length === 0 && !assetsLoading ? (
+                  <div className="border border-orange-200 bg-orange-50 rounded-lg p-3 mb-3">
+                    <p className="text-sm text-orange-700">
+                      No assets found. Please create an asset first before creating a proposal.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="link"
+                      size="sm"
+                      onClick={() => navigate('/create-asset')}
+                      className="text-xs p-0 mt-1 h-auto"
+                    >
+                      Create Asset
+                    </Button>
+                  </div>
+                ) : null}
+                
                 <Select 
                   value={assetId} 
                   onValueChange={setAssetId}
-                  disabled={assetsLoading}
+                  disabled={assetsLoading || assets.length === 0}
                   required
                 >
                   <SelectTrigger className="w-full">
@@ -158,6 +206,10 @@ const CreateProposal = () => {
                     {assetsLoading ? (
                       <SelectItem value="loading" disabled>
                         Loading assets...
+                      </SelectItem>
+                    ) : assets.length === 0 ? (
+                      <SelectItem value="none" disabled>
+                        No assets available
                       </SelectItem>
                     ) : (
                       assets.map(asset => (
@@ -272,7 +324,7 @@ const CreateProposal = () => {
                 <Button
                   type="submit"
                   className="w-full bg-blue-600 hover:bg-blue-700 py-3 h-auto"
-                  disabled={loading || !account || !termsAgreed || isUploading || !imageUrl}
+                  disabled={loading || !account || !termsAgreed || isUploading || !imageUrl || assets.length === 0}
                 >
                   {loading ? (
                     <>

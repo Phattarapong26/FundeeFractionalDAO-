@@ -97,7 +97,7 @@ const CreateAsset = () => {
         throw new Error("Wei values must be integers without decimals");
       }
       
-      await fractionalizeAsset(
+      const result = await fractionalizeAsset(
         contract,
         name,
         symbol,
@@ -112,8 +112,16 @@ const CreateAsset = () => {
         account
       );
       
+      console.log("Asset creation result:", result);
       toast.success("Asset created successfully!");
-      navigate('/marketplace');
+      
+      // เพิ่มการรอประมาณ 3 วินาทีเพื่อให้ blockchain มีเวลาอัปเดตข้อมูล
+      setTimeout(() => {
+        navigate('/marketplace');
+      }, 3000);
+      
+      // แสดง toast สำหรับการรอ
+      toast.info("Redirecting to marketplace in 3 seconds...");
     } catch (error) {
       console.error("Error creating asset:", error);
       toast.error("Failed to create asset. Please try again.");

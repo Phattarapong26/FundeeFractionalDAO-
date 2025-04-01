@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Asset, getAssets } from '@/lib/contract/contract';
 import { useWeb3 } from '@/hooks/useWeb3';
 import { toast } from 'sonner';
@@ -16,12 +15,14 @@ export const useAssets = (): AssetData => {
   const [loading, setLoading] = useState(true);
   const { contract } = useWeb3();
 
-  const fetchAssets = async () => {
+  const fetchAssets = useCallback(async () => {
     if (!contract) return;
     
     try {
+      console.log("Fetching assets from contract...");
       setLoading(true);
       const fetchedAssets = await getAssets(contract);
+      console.log("Fetched assets:", fetchedAssets);
       setAssets(fetchedAssets);
     } catch (error) {
       console.error("Error fetching assets:", error);
@@ -29,7 +30,7 @@ export const useAssets = (): AssetData => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [contract]);
 
   useEffect(() => {
     if (contract) {
@@ -37,7 +38,7 @@ export const useAssets = (): AssetData => {
     } else {
       setLoading(false);
     }
-  }, [contract]);
+  }, [contract, fetchAssets]);
 
   const getAssetById = (id: number): Asset | undefined => {
     return assets.find(asset => Number(asset.id) === id);
