@@ -70,14 +70,26 @@ const Governance = () => {
 
     try {
       setVotingInProgress(prev => ({ ...prev, [proposalId]: true }));
-      await castVote(contract, proposalId, support, account);
-      toast.success(`Vote ${support ? 'YES' : 'NO'} cast successfully`);
+      const result = await castVote(contract, proposalId, support, account);
+      
+      // ตรวจสอบว่าเป็นการโหวต mock data หรือไม่
+      if (result && typeof result === 'object' && 'message' in result && result.message.includes('mock')) {
+        toast.success(`Vote ${support ? 'YES' : 'NO'} recorded (mock data)`);
+      } else {
+        toast.success(`Vote ${support ? 'YES' : 'NO'} cast successfully`);
+      }
       
       // โหลดข้อมูลใหม่
       refreshProposals();
     } catch (error) {
       console.error("Error casting vote:", error);
-      toast.error(`Failed to cast vote: ${error.message || 'Unknown error'}`);
+      
+      // ตรวจสอบประเภทข้อผิดพลาด
+      if (error.message?.includes('Transaction has been reverted by the EVM')) {
+        toast.error("Vote failed. This proposal might not exist on the blockchain.");
+      } else {
+        toast.error(`Failed to cast vote: ${error.message || 'Unknown error'}`);
+      }
     } finally {
       setVotingInProgress(prev => ({ ...prev, [proposalId]: false }));
     }
@@ -96,14 +108,26 @@ const Governance = () => {
 
     try {
       setExecutingInProgress(prev => ({ ...prev, [proposalId]: true }));
-      await executeProposal(contract, proposalId, account);
-      toast.success("Proposal executed successfully");
+      const result = await executeProposal(contract, proposalId, account);
+      
+      // ตรวจสอบว่าเป็นการดำเนินการกับ mock data หรือไม่
+      if (result && typeof result === 'object' && 'message' in result && result.message.includes('mock')) {
+        toast.success("Proposal executed successfully (mock data)");
+      } else {
+        toast.success("Proposal executed successfully");
+      }
       
       // โหลดข้อมูลใหม่
       refreshProposals();
     } catch (error) {
       console.error("Error executing proposal:", error);
-      toast.error(`Failed to execute proposal: ${error.message || 'Unknown error'}`);
+      
+      // ตรวจสอบประเภทข้อผิดพลาด
+      if (error.message?.includes('Transaction has been reverted by the EVM')) {
+        toast.error("Execution failed. This proposal might not exist on the blockchain.");
+      } else {
+        toast.error(`Failed to execute proposal: ${error.message || 'Unknown error'}`);
+      }
     } finally {
       setExecutingInProgress(prev => ({ ...prev, [proposalId]: false }));
     }
