@@ -2,7 +2,13 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { toast } from 'sonner';
 import { getContract } from '@/lib/contract/contract';
 
-const REQUIRED_NETWORK_ID = '1'; // Mainnet
+// รองรับทั้ง Mainnet และ Testnet
+const SUPPORTED_NETWORKS = {
+  '1': 'Ethereum Mainnet',
+  '5': 'Goerli Testnet',
+  '11155111': 'Sepolia Testnet',
+  '80001': 'Mumbai Testnet'
+};
 
 interface Web3ContextType {
   account: string | null;
@@ -28,10 +34,12 @@ export const Web3Provider = ({ children }: { children: ReactNode }) => {
       const chainId = await window.ethereum.request({ method: 'eth_chainId' });
       setNetworkId(chainId);
       
-      if (chainId !== REQUIRED_NETWORK_ID) {
-        toast.error('กรุณาเชื่อมต่อกับ Ethereum Mainnet');
+      if (!SUPPORTED_NETWORKS[chainId]) {
+        toast.error(`กรุณาเชื่อมต่อกับเครือข่ายที่รองรับ: ${Object.values(SUPPORTED_NETWORKS).join(', ')}`);
         return false;
       }
+      
+      toast.success(`เชื่อมต่อกับ ${SUPPORTED_NETWORKS[chainId]} สำเร็จ`);
       return true;
     } catch (error) {
       console.error('Error checking network:', error);
