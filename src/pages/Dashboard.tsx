@@ -19,7 +19,7 @@ import { Loader2 } from 'lucide-react';
 const Dashboard = () => {
   const { account, connectWallet } = useWeb3();
   const navigate = useNavigate();
-  const { rewards, isLoading: rewardsLoading } = useRewards();
+  const { rewards, isLoading: rewardsLoading } = useRewards(account);
 
   return (
     <PageLayout className="bg-gray-50">
@@ -67,7 +67,7 @@ const Dashboard = () => {
                         {rewardsLoading ? (
                           <Loader2 className="animate-spin" />
                         ) : (
-                          `${Number(rewards?.total || 0).toLocaleString('th-TH')} ETH`
+                          `${Number(rewards?.totalRewards || 0).toLocaleString('th-TH')} ETH`
                         )}
                       </p>
                     </div>
@@ -92,6 +92,15 @@ const Dashboard = () => {
               </TabsContent>
 
               <TabsContent value="investments">
+                <div className="mb-4 flex justify-end">
+                  <Button
+                    onClick={() => navigate('/create-asset')}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <PlusCircle className="w-4 h-4 mr-2" />
+                    สร้างสินทรัพย์ใหม่
+                  </Button>
+                </div>
                 <UserInvestments investments={[]} loading={false} />
               </TabsContent>
 
@@ -107,27 +116,27 @@ const Dashboard = () => {
                 <div className="space-y-4">
                   <Card>
                     <CardHeader>
-                      <CardTitle>Rewards History</CardTitle>
+                      <CardTitle>ประวัติรางวัล</CardTitle>
                     </CardHeader>
                     <CardContent>
                       {rewardsLoading ? (
                         <div className="flex items-center justify-center h-32">
                           <Loader2 className="animate-spin" />
                         </div>
-                      ) : rewards?.history?.length > 0 ? (
+                      ) : rewards?.pendingRewards ? (
                         <div className="space-y-4">
-                          {rewards.history.map((reward, index) => (
-                            <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                              <div>
-                                <p className="font-medium">{reward.type}</p>
-                                <p className="text-sm text-gray-500">{reward.timestamp}</p>
-                              </div>
-                              <p className="font-mono">{reward.amount} ETH</p>
+                          <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                            <div>
+                              <p className="font-medium">รางวัลที่รอรับ</p>
+                              <p className="text-sm text-gray-500">
+                                {new Date(rewards.lastClaimed * 1000).toLocaleDateString('th-TH')}
+                              </p>
                             </div>
-                          ))}
+                            <p className="font-mono">{rewards.pendingRewards} ETH</p>
+                          </div>
                         </div>
                       ) : (
-                        <p className="text-center text-gray-500">No rewards history found</p>
+                        <p className="text-center text-gray-500">ไม่พบประวัติรางวัล</p>
                       )}
                     </CardContent>
                   </Card>
