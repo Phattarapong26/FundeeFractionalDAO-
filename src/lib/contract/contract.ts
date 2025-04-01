@@ -18,7 +18,7 @@ interface EventLog {
 }
 
 // กำหนด type สำหรับ event names
-type EventName = 'ProposalCreated' | 'Transfer' | 'allEvents' | 'ALLEVENTS';
+type EventName = 'ProposalCreated' | 'Transfer' | 'allEvents' | 'ALLEVENTS' | 'AssetCreated';
 
 // กำหนด type สำหรับ proposal
 interface ProposalResponse {
@@ -101,7 +101,28 @@ export const getAssets = async (contract: FractionalDAOContract | null) => {
   }
 
   try {
-    const assets = await contract.methods.getAssets().call();
+    // ดึงข้อมูล assets จาก event AssetCreated
+    const assetCreatedEvents = await contract.getPastEvents('allEvents', {
+      fromBlock: 0,
+      toBlock: 'latest',
+      filter: { event: 'AssetCreated' }
+    });
+
+    // ดึงข้อมูลเพิ่มเติมของแต่ละ asset
+    const assets = await Promise.all(
+      assetCreatedEvents
+        .filter((event): event is EventLog => typeof event !== 'string' && 'returnValues' in event)
+        .map(async (event: EventLog) => {
+          const assetId = event.returnValues.assetId as string;
+          const asset = await contract.methods.getAsset(assetId).call();
+          return {
+            ...asset,
+            id: Number(assetId),
+            imageUrl: `https://source.unsplash.com/random/800x600?asset=${assetId}`,
+          };
+        })
+    );
+
     return assets;
   } catch (error: unknown) {
     console.error('Error fetching assets:', error);
@@ -133,6 +154,7 @@ export const getProposals = async (contract: FractionalDAOContract | null) => {
   if (!contract) return [];
   
   try {
+    // ดึงเฉพาะ event ProposalCreated
     const proposalCreatedEvents = await contract.getPastEvents('allEvents', {
       fromBlock: 0,
       toBlock: 'latest',
