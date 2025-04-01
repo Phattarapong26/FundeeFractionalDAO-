@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, TrendingUp, Users, DollarSign, BarChart3 } from 'lucide-react';
@@ -6,6 +5,15 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Button } from '@/components/ui/button';
 import { formatNumber, formatTokenValue } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { useAsset } from '@/hooks/useAsset';
+import { useAssetSecurity } from '@/hooks/useAssetSecurity';
+import { useAssetTrading } from '@/hooks/useAssetTrading';
+import { useAssetVoting } from '@/hooks/useAssetVoting';
+import { useAssetAnalytics } from '@/hooks/useAssetAnalytics';
+import { useWeb3 } from '@/hooks/useWeb3';
+import { Progress } from '@/components/ui/progress';
+import { Loader2, TrendingDown, Shield, Coins, BarChart } from 'lucide-react';
 
 interface DashboardStatsProps {
   totalAssets: number;
@@ -14,51 +22,114 @@ interface DashboardStatsProps {
   tradingVolume: number;
 }
 
-export const DashboardStats = ({ 
-  totalAssets, 
-  totalUsers, 
-  totalValue, 
-  tradingVolume 
-}: DashboardStatsProps) => {
-  const navigate = useNavigate();
+export const DashboardStats = () => {
+  const { id } = useParams<{ id: string }>();
+  const { account } = useWeb3();
+  const { asset, isLoading: isLoadingAsset } = useAsset(id);
+  const { securityLevel, isLoading: isLoadingSecurity } = useAssetSecurity(id);
+  const { tradingStats, isLoading: isLoadingTrading } = useAssetTrading(id);
+  const { votingStats, isLoading: isLoadingVoting } = useAssetVoting(id);
+  const { analytics, isLoading: isLoadingAnalytics } = useAssetAnalytics(id);
+
+  const isLoading = isLoadingAsset || isLoadingSecurity || isLoadingTrading || isLoadingVoting || isLoadingAnalytics;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!asset) {
+    return (
+      <div className="text-center text-muted-foreground">
+        ไม่พบข้อมูลสินทรัพย์
+      </div>
+    );
+  }
+
+  const formatPercentage = (value: number | undefined) => {
+    if (value === undefined) return '0%';
+    return `${(value * 100).toFixed(2)}%`;
+  };
+
+  const formatValue = (value: number | undefined) => {
+    if (value === undefined) return '0';
+    return formatNumber(value);
+  };
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-      <StatCard 
-        title="Total Assets" 
-        value={formatNumber(totalAssets)}
-        icon={<BarChart3 className="h-4 w-4 text-green-500" />}
-        description="Total assets in the platform"
-        link="/marketplace"
-        linkText="View Assets"
-      />
-      
-      <StatCard 
-        title="User Count" 
-        value={formatNumber(totalUsers)}
-        icon={<Users className="h-4 w-4 text-blue-500" />}
-        description="Active investors"
-        link="/governance"
-        linkText="View Governance"
-      />
-      
-      <StatCard 
-        title="Total Value (ETH)" 
-        value={formatTokenValue(totalValue.toString())}
-        icon={<DollarSign className="h-4 w-4 text-purple-500" />}
-        description="Total value locked"
-        link="/marketplace"
-        linkText="Explore"
-      />
-      
-      <StatCard 
-        title="Trading Volume (ETH)" 
-        value={formatTokenValue(tradingVolume.toString())}
-        icon={<TrendingUp className="h-4 w-4 text-orange-500" />}
-        description="24h trading volume"
-        link="/trade"
-        linkText="Trade Now"
-      />
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Security Level */}
+      <Card className="p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Shield className="w-5 h-5 text-primary" />
+            <h3 className="text-sm font-medium">ระดับความปลอดภัย</h3>
+          </div>
+          <span className="text-sm font-medium">{securityLevel || '0'}</span>
+        </div>
+        <Progress value={securityLevel || 0} className="mt-2" />
+      </Card>
+
+      {/* Trading Stats */}
+      <Card className="p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-primary" />
+            <h3 className="text-sm font-medium">ราคาปัจจุบัน</h3>
+          </div>
+          <span className="text-sm font-medium">
+            {formatValue(tradingStats?.currentPrice)} ETH
+          </span>
+        </div>
+        <div className="mt-2 flex items-center gap-2">
+          <span className={`text-sm ${tradingStats?.priceChange24h && tradingStats.priceChange24h > 0 ? 'text-green-500' : 'text-red-500'}`}>
+            {tradingStats?.priceChange24h && tradingStats.priceChange24h > 0 ? (
+              <TrendingUp className="w-4 h-4 inline" />
+            ) : (
+              <TrendingDown className="w-4 h-4 inline" />
+            )}
+            {formatPercentage(tradingStats?.priceChange24h)}
+          </span>
+          <span className="text-sm text-muted-foreground">
+            (24h)
+          </span>
+        </div>
+      </Card>
+
+      {/* Voting Stats */}
+      <Card className="p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Users className="w-5 h-5 text-primary" />
+            <h3 className="text-sm font-medium">ผู้ถือครอง</h3>
+          </div>
+          <span className="text-sm font-medium">
+            {formatValue(votingStats?.totalHolders)}
+          </span>
+        </div>
+        <div className="mt-2 text-sm text-muted-foreground">
+          {formatValue(votingStats?.activeVoters)} คนที่ลงคะแนน
+        </div>
+      </Card>
+
+      {/* Analytics Stats */}
+      <Card className="p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <BarChart className="w-5 h-5 text-primary" />
+            <h3 className="text-sm font-medium">ปริมาณการซื้อขาย</h3>
+          </div>
+          <span className="text-sm font-medium">
+            {formatValue(analytics?.volume24h)} ETH
+          </span>
+        </div>
+        <div className="mt-2 text-sm text-muted-foreground">
+          {formatValue(analytics?.transactions24h)} ธุรกรรม
+        </div>
+      </Card>
     </div>
   );
 };
