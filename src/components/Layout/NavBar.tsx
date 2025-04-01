@@ -2,7 +2,18 @@ import { useState, useEffect } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Wallet, User, LogOut, ChevronDown } from 'lucide-react';
+import { 
+  Wallet, 
+  User, 
+  LogOut, 
+  ChevronDown, 
+  BarChart2, 
+  Store, 
+  Home, 
+  ShieldCheck, 
+  BarChart,
+  Coins
+} from 'lucide-react';
 import { useWeb3 } from '@/hooks/useWeb3';
 import { truncateAddress } from '@/lib/utils';
 import { useTransactions } from '@/hooks/useTransactions';
@@ -41,11 +52,12 @@ const NavBar = () => {
   };
 
   const navItems = [
-    { name: 'Home', path: '/' },
-    { name: 'Marketplace', path: '/marketplace' },
-    { name: 'Trade', path: '/trade' },
-    { name: 'Dashboard', path: '/dashboard' },
-    { name: 'Governance', path: '/governance' },
+    { name: 'Home', path: '/', icon: Home},
+    { name: 'Marketplace', path: '/marketplace' ,icon: Store },
+    { name: 'Trade', path: '/trade' ,icon: BarChart},
+    { name: 'Dashboard', path: '/dashboard', icon: BarChart2 },
+    { name: 'Governance', path: '/governance', icon: ShieldCheck },
+    { name: 'Rewards', path: '/rewards', icon: Coins },
   ];
 
   return (
@@ -117,6 +129,9 @@ const NavBar = () => {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleNavigate('/governance')}>
                   Governance
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleNavigate('/rewards')}>
+                  Rewards
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 

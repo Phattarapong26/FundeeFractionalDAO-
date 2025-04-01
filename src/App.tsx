@@ -15,6 +15,7 @@ import CreateProposal from './pages/CreateProposal';
 import TokenMarketplace from './pages/TokenMarketplace';
 import CreateAsset from './pages/CreateAsset';
 import Trade from './pages/Trade';
+import Rewards from './pages/Rewards';
 import NotFound from './pages/NotFound';
 
 function App() {
@@ -33,6 +34,7 @@ function App() {
             <Route path="/token-marketplace" element={<TokenMarketplace />} />
             <Route path="/create-asset" element={<CreateAsset />} />
             <Route path="/trade" element={<Trade />} />
+            <Route path="/rewards" element={<Rewards />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />

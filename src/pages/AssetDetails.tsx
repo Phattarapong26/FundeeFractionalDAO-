@@ -24,6 +24,7 @@ import { truncateAddress } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatEthValue, formatTokenValue } from '@/lib/utils';
+import { AssetManagement } from '@/components/Asset/AssetManagement';
 
 const AssetDetails = () => {
   const { id } = useParams();
