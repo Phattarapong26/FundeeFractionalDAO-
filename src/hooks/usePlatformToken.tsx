@@ -1,89 +1,112 @@
 import { useState, useEffect } from 'react';
-import { useWeb3 } from '@/hooks/useWeb3';
-import { getPlatformTokenContract, getTokenBalance } from '@/lib/contract/platformToken';
+import { useWeb3 } from './useWeb3';
 import { toast } from 'sonner';
+import { Web3 } from 'web3';
 
-export interface PlatformTokenData {
-  balance: number;
-  loading: boolean;
-  buyTokens: (amount: string) => Promise<void>;
-  refetch: () => Promise<void>;
-  tokenAddress: string;
+interface PlatformTokenData {
+  balance: string;
+  price: string;
+  totalSupply: string;
+  isLoading: boolean;
+  buyTokens: (amount: number) => Promise<void>;
+  payFeeWithToken: (amount: number) => Promise<void>;
 }
 
 export const usePlatformToken = (): PlatformTokenData => {
-  const [balance, setBalance] = useState<number>(0);
-  const [loading, setLoading] = useState<boolean>(true);
-  const { account, web3 } = useWeb3();
-
-  const fetchBalance = async () => {
-    if (!web3 || !account) {
-      setLoading(false);
-      return;
-    }
-
+  const [balance, setBalance] = useState('0');
+  const [price, setPrice] = useState('0');
+  const [totalSupply, setTotalSupply] = useState('0');
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const { account, contract } = useWeb3();
+  const web3 = new Web3();
+  
+  const fetchTokenData = async () => {
+    if (!contract || !account) return;
+    
     try {
-      setLoading(true);
-      const tokenContract = getPlatformTokenContract(web3);
+      // ดึงยอดคงเหลือ
+      const balanceWei = await contract.methods.getPlatformTokenBalance(account).call();
+      setBalance(web3.utils.fromWei(balanceWei, 'ether'));
       
-      if (!tokenContract) {
-        console.error("Failed to initialize token contract");
-        setLoading(false);
-        return;
-      }
-
-      const tokenBalance = await getTokenBalance(tokenContract, account);
-      setBalance(Number(tokenBalance));
+      // ดึงราคา token
+      const priceWei = await contract.methods.getPlatformTokenPrice().call();
+      setPrice(web3.utils.fromWei(priceWei, 'ether'));
+      
+      // ดึงจำนวน token ทั้งหมด
+      const supplyWei = await contract.methods.getPlatformTokenTotalSupply().call();
+      setTotalSupply(web3.utils.fromWei(supplyWei, 'ether'));
     } catch (error) {
-      console.error("Error fetching token balance:", error);
-      toast.error("Failed to fetch token balance");
-    } finally {
-      setLoading(false);
+      console.error("Error fetching platform token data:", error);
+      toast.error("ไม่สามารถดึงข้อมูล token ได้");
     }
   };
-
+  
   useEffect(() => {
-    fetchBalance();
-  }, [web3, account]);
-
-  const buyTokens = async (ethAmount: string) => {
-    if (!web3 || !account) {
-      toast.error("Please connect your wallet first");
+    if (contract && account) {
+      fetchTokenData();
+    }
+  }, [contract, account]);
+  
+  const buyTokens = async (amount: number) => {
+    if (!contract || !account) {
+      toast.error("กรุณาเชื่อมต่อวอลเล็ตก่อน");
       return;
     }
-
+    
+    setIsLoading(true);
     try {
-      setLoading(true);
-      const tokenContract = getPlatformTokenContract(web3);
+      const weiAmount = web3.utils.toWei(amount.toString(), 'ether');
+      const priceWei = await contract.methods.getPlatformTokenPrice().call();
+      const totalCost = Number(weiAmount) * Number(priceWei);
       
-      if (!tokenContract) {
-        toast.error("Failed to initialize token contract");
-        return;
-      }
-
-      const weiAmount = web3.utils.toWei(ethAmount, 'ether');
-      
-      await tokenContract.methods.buyTokens().send({
+      await contract.methods.buyPlatformTokens(weiAmount).send({
         from: account,
-        value: weiAmount,
-        gas: 200000
+        value: totalCost.toString(),
+        gas: 3000000
       });
       
-      toast.success("Tokens purchased successfully");
-      await fetchBalance();
+      toast.success("ซื้อ token สำเร็จ");
+      await fetchTokenData();
     } catch (error) {
-      console.error("Error buying tokens:", error);
-      toast.error(`Failed to buy tokens: ${error.message || 'Unknown error'}`);
+      console.error("Error buying platform tokens:", error);
+      toast.error("ซื้อ token ไม่สำเร็จ");
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
-
+  
+  const payFeeWithToken = async (amount: number) => {
+    if (!contract || !account) {
+      toast.error("กรุณาเชื่อมต่อวอลเล็ตก่อน");
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      const weiAmount = web3.utils.toWei(amount.toString(), 'ether');
+      
+      await contract.methods.payFeeWithToken(weiAmount).send({
+        from: account,
+        gas: 3000000
+      });
+      
+      toast.success("จ่ายค่าธรรมเนียมสำเร็จ");
+      await fetchTokenData();
+    } catch (error) {
+      console.error("Error paying fee with token:", error);
+      toast.error("จ่ายค่าธรรมเนียมไม่สำเร็จ");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   return {
     balance,
-    loading,
+    price,
+    totalSupply,
+    isLoading,
     buyTokens,
-    refetch: fetchBalance,
-    tokenAddress: ''
+    payFeeWithToken
   };
 };

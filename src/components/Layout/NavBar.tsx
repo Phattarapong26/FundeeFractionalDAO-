@@ -12,7 +12,9 @@ import {
   Home, 
   ShieldCheck, 
   BarChart,
-  Coins
+  Coins,
+  LineChart,
+  Shield
 } from 'lucide-react';
 import { useWeb3 } from '@/hooks/useWeb3';
 import { truncateAddress } from '@/lib/utils';
@@ -58,6 +60,8 @@ const NavBar = () => {
     { name: 'Dashboard', path: '/dashboard', icon: BarChart2 },
     { name: 'Governance', path: '/governance', icon: ShieldCheck },
     { name: 'Rewards', path: '/rewards', icon: Coins },
+    { name: 'Analytics', path: '/analytics', icon: LineChart },
+    { name: 'Security', path: '/security-settings', icon: Shield },
   ];
 
   return (
@@ -132,6 +136,12 @@ const NavBar = () => {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleNavigate('/rewards')}>
                   Rewards
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleNavigate('/analytics')}>
+                  Analytics
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleNavigate('/security-settings')}>
+                  Security Settings
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 

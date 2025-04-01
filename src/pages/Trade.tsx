@@ -42,7 +42,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { useWeb3 } from '@/hooks/useWeb3';
 import { useAssets } from '@/hooks/useAssets';
 import { useFeeStatus } from '@/hooks/useFeeStatus';
-import { createTradeOrder, matchOrders, cancelOrder } from '@/lib/contract/tradeContract';
+import { createTradeOrder, matchOrders, cancelOrder, getBestPrices } from '@/lib/contract/tradeContract';
 import TradeOrderbook from '@/components/Trade/TradeOrderbook';
 import TradeHistory from '@/components/Trade/TradeHistory';
 import ActiveOrders from '@/components/Trade/ActiveOrders';
@@ -119,12 +119,39 @@ const Trade = () => {
   const [orderAmount, setOrderAmount] = useState('');
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [showTradeDialog, setShowTradeDialog] = useState(false);
+  const [userBalance, setUserBalance] = useState(0);
+  const [bestPrices, setBestPrices] = useState({ bestBuyPrice: 0, bestSellPrice: 0 });
   
   const { assets, loading } = useAssets();
   const { account, contract, web3, connectWallet } = useWeb3();
   const { hasPaidFee, isLoading: feeStatusLoading, payWithETH, payWithToken } = useFeeStatus();
   const navigate = useNavigate();
   
+  useEffect(() => {
+    if (selectedAsset && contract) {
+      fetchBestPrices();
+      fetchUserBalance();
+    }
+  }, [selectedAsset, contract]);
+
+  const fetchBestPrices = async () => {
+    try {
+      const prices = await getBestPrices(contract, selectedAsset.id);
+      setBestPrices(prices);
+    } catch (error) {
+      console.error("Error fetching best prices:", error);
+    }
+  };
+
+  const fetchUserBalance = async () => {
+    try {
+      const balance = await contract.methods.getUserShares(account, selectedAsset.id).call();
+      setUserBalance(Number(balance) / 1e18);
+    } catch (error) {
+      console.error("Error fetching user balance:", error);
+    }
+  };
+
   const platformToken = {
     id: 999,
     name: "Platform Token",
@@ -163,57 +190,70 @@ const Trade = () => {
   
   const handlePlaceOrder = async () => {
     if (!account) {
-      toast.error("Please connect your wallet first");
+      toast.error("กรุณาเชื่อมต่อวอลเล็ตก่อน");
       return;
     }
     
     if (!selectedAsset) {
-      toast.error("Please select an asset to trade");
+      toast.error("กรุณาเลือกสินทรัพย์ที่ต้องการซื้อขาย");
       return;
     }
     
     if (!orderPrice || !orderAmount) {
-      toast.error("Please enter both price and amount");
+      toast.error("กรุณากรอกราคาและจำนวน");
+      return;
+    }
+
+    const price = parseFloat(orderPrice);
+    const amount = parseFloat(orderAmount);
+    
+    // ตรวจสอบราคา
+    if (tradeType === 'buy' && price > bestPrices.bestSellPrice * 1.05) {
+      toast.error("ราคาที่กรอกสูงกว่าราคาตลาด 5%");
       return;
     }
     
-    // Verify contract is initialized
-    if (!contract) {
-      toast.error("Contract not initialized. Please reconnect your wallet.");
-      console.error("Contract not initialized in handlePlaceOrder");
+    if (tradeType === 'sell' && price < bestPrices.bestBuyPrice * 0.95) {
+      toast.error("ราคาที่กรอกต่ำกว่าราคาตลาด 5%");
       return;
     }
     
-    // Check fee status
+    // ตรวจสอบยอดคงเหลือ
+    if (tradeType === 'sell' && amount > userBalance) {
+      toast.error("ยอดคงเหลือไม่เพียงพอ");
+      return;
+    }
+    
+    // ตรวจสอบค่าธรรมเนียม
     if (!hasPaidFee) {
-      toast.error("You need to pay the transaction fee first");
+      toast.error("กรุณาจ่ายค่าธรรมเนียมก่อน");
       return;
     }
     
     setIsPlacingOrder(true);
     
     try {
-      console.log("Creating trade order with contract:", contract ? "Initialized" : "Not initialized");
-      
       await createTradeOrder(
         contract,
         selectedAsset.id,
         tradeType === 'buy',
-        parseFloat(orderPrice),
-        parseFloat(orderAmount),
+        price,
+        amount,
         account
       );
       
-      toast.success(`Successfully placed ${tradeType} order for ${orderAmount} shares`);
+      toast.success(`สร้างคำสั่ง${tradeType === 'buy' ? 'ซื้อ' : 'ขาย'}สำเร็จ`);
       
       setOrderPrice('');
       setOrderAmount('');
       setShowTradeDialog(false);
       
       await matchOrders(contract, selectedAsset.id, account);
+      await fetchBestPrices();
+      await fetchUserBalance();
     } catch (error) {
       console.error("Error placing order:", error);
-      toast.error(`Failed to place order: ${error.message || 'Unknown error'}`);
+      toast.error(`สร้างคำสั่งไม่สำเร็จ: ${error.message || 'ไม่ทราบสาเหตุ'}`);
     } finally {
       setIsPlacingOrder(false);
     }
@@ -427,7 +467,7 @@ const Trade = () => {
                             </SelectContent>
                           </Select>
                           <div className="text-xs mt-1 text-gray-500">
-                            Your balance: {selectedAsset ? formatTokenValue(selectedAsset.availableShares) : '0'} shares
+                            Your balance: {selectedAsset ? formatTokenValue(userBalance) : '0'} shares
                           </div>
                         </div>
                         

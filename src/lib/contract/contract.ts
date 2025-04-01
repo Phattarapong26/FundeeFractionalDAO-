@@ -54,16 +54,24 @@ export const getAssets = async (contract: any) => {
   if (!contract) return [];
   
   try {
-    const assetIds = [1, 2, 3, 4, 5];
-    const assetsPromises = assetIds.map(id => contract.methods.getAsset(id).call());
-    const assets = await Promise.all(assetsPromises);
-    
-    return assets
-      .filter(asset => asset.id > 0)
-      .map(asset => ({
-        ...asset,
-        imageUrl: `https://source.unsplash.com/random/800x600?asset=${asset.id}`,
-      }));
+    // ดึงข้อมูลจาก event logs
+    const assetCreatedEvents = await contract.getPastEvents('AssetCreated', {
+      fromBlock: 0,
+      toBlock: 'latest'
+    });
+
+    const assets = await Promise.all(
+      assetCreatedEvents.map(async (event: any) => {
+        const assetId = event.returnValues.assetId;
+        const asset = await contract.methods.getAsset(assetId).call();
+        return {
+          ...asset,
+          imageUrl: `https://source.unsplash.com/random/800x600?asset=${assetId}`,
+        };
+      })
+    );
+
+    return assets.filter(asset => asset.id > 0);
   } catch (error) {
     console.error("Error fetching assets:", error);
     return [];
@@ -74,16 +82,24 @@ export const getProposals = async (contract: any) => {
   if (!contract) return [];
   
   try {
-    const proposalIds = [1, 2, 3, 4, 5];
-    const proposalsPromises = proposalIds.map(id => contract.methods.getProposal(id).call());
-    const proposals = await Promise.all(proposalsPromises);
-    
-    return proposals
-      .filter(proposal => proposal.id > 0)
-      .map(proposal => ({
-        ...proposal,
-        imageUrl: `https://source.unsplash.com/random/800x600?proposal=${proposal.id}`,
-      }));
+    // ดึงข้อมูลจาก event logs
+    const proposalCreatedEvents = await contract.getPastEvents('ProposalCreated', {
+      fromBlock: 0,
+      toBlock: 'latest'
+    });
+
+    const proposals = await Promise.all(
+      proposalCreatedEvents.map(async (event: any) => {
+        const proposalId = event.returnValues.proposalId;
+        const proposal = await contract.methods.getProposal(proposalId).call();
+        return {
+          ...proposal,
+          imageUrl: `https://source.unsplash.com/random/800x600?proposal=${proposalId}`,
+        };
+      })
+    );
+
+    return proposals.filter(proposal => proposal.id > 0);
   } catch (error) {
     console.error("Error fetching proposals:", error);
     return [];
@@ -94,12 +110,18 @@ export const getAssetOwnershipHistory = async (contract: any, assetId: number) =
   if (!contract || !assetId) return [];
   
   try {
-    return [
-      { owner: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e', shares: 50, timestamp: Date.now() - 86400000 * 30 },
-      { owner: '0x3A2e8D690f1BF6997D6E9eB66755e3D36eF32119', shares: 25, timestamp: Date.now() - 86400000 * 20 },
-      { owner: '0x9876CdEF1234567890AbCdEf1234567890aBcDeF', shares: 15, timestamp: Date.now() - 86400000 * 10 },
-      { owner: '0xAbCd1234Ef5678901234567890AbCdEf12345678', shares: 10, timestamp: Date.now() - 86400000 * 5 },
-    ];
+    // ดึงข้อมูลจาก event logs
+    const transferEvents = await contract.getPastEvents('Transfer', {
+      fromBlock: 0,
+      toBlock: 'latest',
+      filter: { assetId }
+    });
+
+    return transferEvents.map((event: any) => ({
+      owner: event.returnValues.to,
+      shares: Number(event.returnValues.amount),
+      timestamp: Number(event.returnValues.timestamp)
+    }));
   } catch (error) {
     console.error("Error fetching asset ownership history:", error);
     return [];

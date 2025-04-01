@@ -1,4 +1,5 @@
 import { FractionalDAOAbi } from './abi';
+import { Web3 } from 'web3';
 
 // Enhanced mock data structure for testing
 const mockOrderbook = [
@@ -49,11 +50,16 @@ export const getOrderbook = async (contract: any, assetId: number) => {
   }
   
   try {
-    // In a real implementation, this would call a contract method like:
-    // return await contract.methods.getOrderbook(assetId).call();
-    
-    // For demo purposes, returning filtered mock data
-    return mockOrderbook.filter(order => order.assetId === assetId);
+    const orders = await contract.methods.getOrdersByAsset(assetId).call();
+    return orders.map((order: any) => ({
+      id: Number(order.id),
+      assetId: Number(order.assetId),
+      seller: order.trader,
+      price: Number(order.price) / 1e18,
+      amount: Number(order.amount) / 1e18,
+      isBuyOrder: order.isBuyOrder,
+      isActive: order.isActive
+    }));
   } catch (error) {
     console.error("Error in getOrderbook:", error);
     return [];
@@ -73,14 +79,16 @@ export const getTradeHistory = async (contract: any, assetId: number) => {
   }
   
   try {
-    // In a real implementation, this would call a contract method like:
-    // return await contract.methods.getTradeHistory(assetId).call();
-    
-    // For demo purposes, returning filtered mock data
-    const history = mockTradeHistory.filter(trade => trade.assetId === assetId);
-    
-    // Sort by timestamp (newest first)
-    return history.sort((a, b) => b.timestamp - a.timestamp);
+    const trades = await contract.methods.getTradesByAsset(assetId).call();
+    return trades.map((trade: any) => ({
+      id: Number(trade.id),
+      assetId: Number(trade.assetId),
+      buyer: trade.buyer,
+      seller: trade.seller,
+      price: Number(trade.price) / 1e18,
+      amount: Number(trade.amount) / 1e18,
+      timestamp: Number(trade.timestamp)
+    }));
   } catch (error) {
     console.error("Error in getTradeHistory:", error);
     return [];
@@ -150,39 +158,41 @@ export const createTradeOrder = async (
       from
     });
     
-    // In a real implementation, this would call a contract method like:
-    // if (isBuyOrder) {
-    //   return await contract.methods.createOrder(assetId, amount, web3.utils.toWei(price.toString(), 'ether'), true).send({
-    //     from,
-    //     value: web3.utils.toWei((price * amount).toString(), 'ether'),
-    //     gas: 3000000
-    //   });
-    // } else {
-    //   return await contract.methods.createOrder(assetId, amount, web3.utils.toWei(price.toString(), 'ether'), false).send({
-    //     from,
-    //     gas: 3000000
-    //   });
-    // }
+    const web3 = new Web3();
+    const weiPrice = web3.utils.toWei(price.toString(), 'ether');
+    const weiAmount = web3.utils.toWei(amount.toString(), 'ether');
     
-    // For demo purposes, simulating a delay and returning a mock transaction receipt
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Add the new order to mockOrderbook (for demo only)
-    const newId = mockOrderbook.length + 1;
-    mockOrderbook.push({
-      id: newId,
-      assetId,
-      seller: from,
-      price,
-      amount,
-      isBuyOrder,
-      isActive: true
-    });
-    
-    return { 
-      transactionHash: '0x' + Math.random().toString(16).substring(2, 42),
-      status: 1 
-    };
+    if (isBuyOrder) {
+      const totalCost = price * amount;
+      const weiTotalCost = web3.utils.toWei(totalCost.toString(), 'ether');
+      const fee = weiTotalCost * 0.01; // ค่าธรรมเนียม 1%
+      
+      return await contract.methods.createOrder(
+        assetId,
+        weiAmount,
+        weiPrice,
+        true
+      ).send({
+        from,
+        value: weiTotalCost + fee,
+        gas: 3000000
+      });
+    } else {
+      const totalValue = price * amount;
+      const weiTotalValue = web3.utils.toWei(totalValue.toString(), 'ether');
+      const fee = weiTotalValue * 0.01; // ค่าธรรมเนียม 1%
+      
+      return await contract.methods.createOrder(
+        assetId,
+        weiAmount,
+        weiPrice,
+        false
+      ).send({
+        from,
+        value: fee,
+        gas: 3000000
+      });
+    }
   } catch (error) {
     console.error("Error in createTradeOrder:", error);
     throw error;
@@ -202,73 +212,15 @@ export const matchOrders = async (contract: any, assetId: number, from: string) 
     throw new Error("Contract not initialized");
   }
   
-  // In a real implementation, this would call a contract method like:
-  // return await contract.methods.matchOrders(assetId).send({
-  //   from,
-  //   gas: 3000000
-  // });
-  
-  // For demo purposes, simulating a delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  // Simulate matching logic (for demo only)
-  const buyOrders = mockOrderbook
-    .filter(order => order.assetId === assetId && order.isBuyOrder && order.isActive)
-    .sort((a, b) => b.price - a.price); // Highest buy price first
-  
-  const sellOrders = mockOrderbook
-    .filter(order => order.assetId === assetId && !order.isBuyOrder && order.isActive)
-    .sort((a, b) => a.price - b.price); // Lowest sell price first
-  
-  // Check if we have matching orders
-  if (buyOrders.length > 0 && sellOrders.length > 0) {
-    const highestBuy = buyOrders[0];
-    const lowestSell = sellOrders[0];
-    
-    if (highestBuy.price >= lowestSell.price) {
-      // We have a match! In a real implementation, this would execute on the blockchain
-      const tradePrice = (highestBuy.price + lowestSell.price) / 2; // Middle price
-      const tradeAmount = Math.min(highestBuy.amount, lowestSell.amount);
-      
-      // Update the orderbook (for demo only)
-      if (highestBuy.amount === tradeAmount) {
-        // Buy order completely filled
-        const buyOrderIndex = mockOrderbook.findIndex(order => order.id === highestBuy.id);
-        if (buyOrderIndex !== -1) mockOrderbook[buyOrderIndex].isActive = false;
-      } else {
-        // Buy order partially filled
-        const buyOrderIndex = mockOrderbook.findIndex(order => order.id === highestBuy.id);
-        if (buyOrderIndex !== -1) mockOrderbook[buyOrderIndex].amount -= tradeAmount;
-      }
-      
-      if (lowestSell.amount === tradeAmount) {
-        // Sell order completely filled
-        const sellOrderIndex = mockOrderbook.findIndex(order => order.id === lowestSell.id);
-        if (sellOrderIndex !== -1) mockOrderbook[sellOrderIndex].isActive = false;
-      } else {
-        // Sell order partially filled
-        const sellOrderIndex = mockOrderbook.findIndex(order => order.id === lowestSell.id);
-        if (sellOrderIndex !== -1) mockOrderbook[sellOrderIndex].amount -= tradeAmount;
-      }
-      
-      // Add to trade history (for demo only)
-      const newTradeId = mockTradeHistory.length + 1;
-      mockTradeHistory.push({
-        id: newTradeId,
-        assetId,
-        buyer: highestBuy.seller,
-        seller: lowestSell.seller,
-        price: tradePrice,
-        amount: tradeAmount,
-        timestamp: Math.floor(Date.now() / 1000)
-      });
-    }
+  try {
+    return await contract.methods.matchOrders(assetId).send({
+      from,
+      gas: 3000000
+    });
+  } catch (error) {
+    console.error("Error in matchOrders:", error);
+    throw error;
   }
-  
-  return { 
-    transactionHash: '0x' + Math.random().toString(16).substring(2, 42),
-    status: 1 
-  };
 };
 
 /**
@@ -326,72 +278,34 @@ export const fillOrder = async (contract: any, orderId: number, amount: number, 
     throw new Error("Contract not initialized");
   }
   
-  // In a real implementation, this would call a contract method like:
-  // const order = await contract.methods.getOrder(orderId).call();
-  // if (order.isBuyOrder) {
-  //   return await contract.methods.fillBuyOrder(orderId, amount).send({
-  //     from,
-  //     gas: 3000000
-  //   });
-  // } else {
-  //   return await contract.methods.fillSellOrder(orderId, amount).send({
-  //     from,
-  //     value: web3.utils.toWei((order.price * amount).toString(), 'ether'),
-  //     gas: 3000000
-  //   });
-  // }
-  
-  // For demo purposes, simulating a delay
-  await new Promise(resolve => setTimeout(resolve, 2000));
-  
-  // Find the order
-  const orderIndex = mockOrderbook.findIndex(order => order.id === orderId);
-  if (orderIndex === -1) {
-    throw new Error('Order not found');
+  try {
+    const web3 = new Web3();
+    const weiAmount = web3.utils.toWei(amount.toString(), 'ether');
+    
+    // ดึงข้อมูล order ก่อน
+    const order = await contract.methods.getOrder(orderId).call();
+    
+    if (order.isBuyOrder) {
+      // กรณีเติมคำสั่งซื้อ
+      return await contract.methods.fillBuyOrder(orderId, weiAmount).send({
+        from,
+        gas: 3000000
+      });
+    } else {
+      // กรณีเติมคำสั่งขาย ต้องส่ง ETH ไปด้วย
+      const totalCost = Number(order.price) * amount;
+      const weiTotalCost = web3.utils.toWei(totalCost.toString(), 'ether');
+      
+      return await contract.methods.fillSellOrder(orderId, weiAmount).send({
+        from,
+        value: weiTotalCost,
+        gas: 3000000
+      });
+    }
+  } catch (error) {
+    console.error("Error in fillOrder:", error);
+    throw error;
   }
-  
-  const order = mockOrderbook[orderIndex];
-  
-  // Check if order is active
-  if (!order.isActive) {
-    throw new Error('Order is no longer active');
-  }
-  
-  // Check if user is not the order creator (can't fill your own order)
-  if (order.seller.toLowerCase() === from.toLowerCase()) {
-    throw new Error('Cannot fill your own order');
-  }
-  
-  // Check if amount is valid
-  if (amount <= 0 || amount > order.amount) {
-    throw new Error(`Invalid amount. Available: ${order.amount}`);
-  }
-  
-  // Update the order (for demo only)
-  if (amount === order.amount) {
-    // Order completely filled
-    mockOrderbook[orderIndex].isActive = false;
-  } else {
-    // Order partially filled
-    mockOrderbook[orderIndex].amount -= amount;
-  }
-  
-  // Add to trade history (for demo only)
-  const newTradeId = mockTradeHistory.length + 1;
-  mockTradeHistory.push({
-    id: newTradeId,
-    assetId: order.assetId,
-    buyer: order.isBuyOrder ? order.seller : from,
-    seller: order.isBuyOrder ? from : order.seller,
-    price: order.price,
-    amount: amount,
-    timestamp: Math.floor(Date.now() / 1000)
-  });
-  
-  return { 
-    transactionHash: '0x' + Math.random().toString(16).substring(2, 42),
-    status: 1 
-  };
 };
 
 /**
@@ -402,27 +316,33 @@ export const fillOrder = async (contract: any, orderId: number, amount: number, 
  */
 export const getBestPrices = async (contract: any, assetId: number) => {
   if (!contract) {
-    console.warn("Contract not initialized in getBestPrices");
-    return { bestBuyPrice: 0, bestSellPrice: 0 };
+    console.error("Contract not initialized in getBestPrices");
+    throw new Error("Contract not initialized");
   }
   
   try {
-    const orders = await getOrderbook(contract, assetId);
+    const orders = await contract.methods.getOrdersByAsset(assetId).call();
     
-    const buyOrders = orders
-      .filter(order => order.isBuyOrder && order.isActive)
-      .sort((a, b) => b.price - a.price); // Highest buy price first
+    // กรองคำสั่งซื้อและขาย
+    const buyOrders = orders.filter((order: any) => order.isBuyOrder);
+    const sellOrders = orders.filter((order: any) => !order.isBuyOrder);
     
-    const sellOrders = orders
-      .filter(order => !order.isBuyOrder && order.isActive)
-      .sort((a, b) => a.price - b.price); // Lowest sell price first
+    // หาราคาซื้อสูงสุด
+    const bestBuyPrice = buyOrders.length > 0
+      ? Math.max(...buyOrders.map((order: any) => Number(order.price)))
+      : 0;
     
-    const bestBuyPrice = buyOrders.length > 0 ? buyOrders[0].price : 0;
-    const bestSellPrice = sellOrders.length > 0 ? sellOrders[0].price : 0;
+    // หาราคาขายต่ำสุด
+    const bestSellPrice = sellOrders.length > 0
+      ? Math.min(...sellOrders.map((order: any) => Number(order.price)))
+      : 0;
     
-    return { bestBuyPrice, bestSellPrice };
+    return {
+      bestBuyPrice: bestBuyPrice / 1e18, // แปลงจาก Wei เป็น ETH
+      bestSellPrice: bestSellPrice / 1e18
+    };
   } catch (error) {
-    console.error("Error fetching best prices:", error);
-    return { bestBuyPrice: 0, bestSellPrice: 0 };
+    console.error("Error in getBestPrices:", error);
+    throw error;
   }
 };

@@ -1,8 +1,8 @@
 import { motion } from 'framer-motion';
-import { RewardsInfo } from '@/components/Rewards/RewardsInfo';
+import { PlatformTokenInfo } from '@/components/Platform/PlatformTokenInfo';
 import PageLayout from '@/components/Layout/PageLayout';
 
-const Rewards = () => {
+const PlatformToken = () => {
   return (
     <PageLayout className="bg-gray-50">
       <div className="max-w-7xl mx-auto px-6 py-12">
@@ -12,16 +12,16 @@ const Rewards = () => {
           transition={{ duration: 0.5 }}
           className="mb-8"
         >
-          <h1 className="text-3xl font-bold mb-4">Rewards & Dividends</h1>
+          <h1 className="text-3xl font-bold mb-4">FUNDFA Token</h1>
           <p className="text-lg text-gray-600 max-w-3xl">
-            ดูรายได้จากการลงทุนของคุณ รวมถึงประวัติการได้รับ rewards และ dividends
+            Token สำหรับใช้ในแพลตฟอร์ม สามารถใช้ซื้อขายและจ่ายค่าธรรมเนียมได้
           </p>
         </motion.div>
 
-        <RewardsInfo />
+        <PlatformTokenInfo />
       </div>
     </PageLayout>
   );
 };
 
-export default Rewards; 
+export default PlatformToken; 

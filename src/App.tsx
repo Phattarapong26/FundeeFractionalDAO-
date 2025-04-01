@@ -1,4 +1,4 @@
-import { HashRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.css';
 import { Toaster } from '@/components/ui/sonner';
 import { Web3Provider } from '@/hooks/useWeb3';
@@ -16,13 +16,17 @@ import TokenMarketplace from './pages/TokenMarketplace';
 import CreateAsset from './pages/CreateAsset';
 import Trade from './pages/Trade';
 import Rewards from './pages/Rewards';
+import { Fee } from './pages/Fee';
+import SecuritySettings from './pages/SecuritySettings';
+import Whitelist from './pages/Whitelist';
+import Analytics from './pages/Analytics';
 import NotFound from './pages/NotFound';
 
 function App() {
   return (
     <Web3Provider>
       <TransactionsProvider>
-        <HashRouter>
+        <Router>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/dashboard" element={<Dashboard />} />
@@ -35,10 +39,14 @@ function App() {
             <Route path="/create-asset" element={<CreateAsset />} />
             <Route path="/trade" element={<Trade />} />
             <Route path="/rewards" element={<Rewards />} />
+            <Route path="/fee" element={<Fee />} />
+            <Route path="/security-settings" element={<SecuritySettings />} />
+            <Route path="/whitelist" element={<Whitelist />} />
+            <Route path="/analytics" element={<Analytics />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
-        </HashRouter>
+        </Router>
       </TransactionsProvider>
     </Web3Provider>
   );

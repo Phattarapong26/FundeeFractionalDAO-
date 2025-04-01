@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
-import { Coins, ArrowRight, ExternalLink, AlertCircle } from 'lucide-react';
+import { Coins, ArrowRight, ExternalLink, AlertCircle, ArrowUpDown, Loader2 } from 'lucide-react';
 import { useWeb3 } from '@/hooks/useWeb3';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,15 +11,18 @@ import { usePlatformToken } from '@/hooks/usePlatformToken';
 import { PLATFORM_TOKEN_ADDRESS } from '@/lib/contract/platformToken';
 import { useFeeStatus } from '@/hooks/useFeeStatus';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
 
 export const PlatformTokenInfo = () => {
   const [totalSupply, setTotalSupply] = useState<number>(1000000);
   const [tokenPrice, setTokenPrice] = useState<number>(0.05);
   const [votingPower, setVotingPower] = useState<number>(0);
   const { account } = useWeb3();
-  const { balance: tokenBalance, tokenAddress } = usePlatformToken();
+  const { balance: tokenBalance, tokenAddress, price, totalSupply: platformTotalSupply, isLoading, buyTokens, payFeeWithToken } = usePlatformToken();
   const { hasPaidFee, isLoading: feeStatusLoading, payWithETH, payWithToken } = useFeeStatus();
   const navigate = useNavigate();
+  const [buyAmount, setBuyAmount] = useState('');
   
   useEffect(() => {
     if (!account) return;
@@ -28,6 +31,25 @@ export const PlatformTokenInfo = () => {
     const calculatedVotingPower = (tokenBalance / totalSupply) * 100;
     setVotingPower(calculatedVotingPower);
   }, [account, tokenBalance, totalSupply]);
+  
+  const handleBuyTokens = async () => {
+    if (!buyAmount || isNaN(Number(buyAmount)) || Number(buyAmount) <= 0) {
+      toast.error("กรุณากรอกจำนวน token ที่ต้องการซื้อ");
+      return;
+    }
+    
+    await buyTokens(Number(buyAmount));
+    setBuyAmount('');
+  };
+  
+  const handlePayFee = async () => {
+    if (!tokenBalance || Number(tokenBalance) <= 0) {
+      toast.error("ยอด token ไม่เพียงพอ");
+      return;
+    }
+    
+    await payFeeWithToken(Number(tokenBalance));
+  };
   
   if (!account) {
     return null;
@@ -130,6 +152,88 @@ export const PlatformTokenInfo = () => {
                 Trade Tokens <ExternalLink className="h-4 w-4" />
               </Button>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ArrowUpDown className="w-5 h-5" />
+            ซื้อ Token
+          </CardTitle>
+          <CardDescription>
+            ซื้อ FUNDFA token ด้วย ETH
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">จำนวน FUNDFA ที่ต้องการซื้อ</label>
+              <Input
+                type="number"
+                value={buyAmount}
+                onChange={(e) => setBuyAmount(e.target.value)}
+                placeholder="0"
+                disabled={isLoading}
+              />
+            </div>
+            
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-gray-500">ราคารวม</span>
+              <span className="font-medium">
+                {buyAmount && !isNaN(Number(buyAmount)) && Number(buyAmount) > 0
+                  ? `${(Number(buyAmount) * Number(price)).toLocaleString()} ETH`
+                  : '0 ETH'}
+              </span>
+            </div>
+            
+            <Button
+              className="w-full"
+              onClick={handleBuyTokens}
+              disabled={isLoading || !buyAmount || isNaN(Number(buyAmount)) || Number(buyAmount) <= 0}
+            >
+              {isLoading ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> กำลังประมวลผล...</>
+              ) : (
+                'ซื้อ Token'
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+      
+      <Card className="md:col-span-2">
+        <CardHeader>
+          <CardTitle>จ่ายค่าธรรมเนียมด้วย FUNDFA</CardTitle>
+          <CardDescription>
+            ใช้ FUNDFA token จ่ายค่าธรรมเนียมการทำธุรกรรม
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-500">ยอด FUNDFA ที่ใช้จ่าย</span>
+              <span className="font-medium">
+                {isLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  `${Number(tokenBalance).toLocaleString()} FUNDFA`
+                )}
+              </span>
+            </div>
+            
+            <Button
+              className="w-full"
+              onClick={handlePayFee}
+              disabled={isLoading || !tokenBalance || Number(tokenBalance) <= 0}
+            >
+              {isLoading ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> กำลังประมวลผล...</>
+              ) : (
+                'จ่ายค่าธรรมเนียม'
+              )}
+            </Button>
           </div>
         </CardContent>
       </Card>

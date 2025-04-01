@@ -1,135 +1,170 @@
 import { useState, useEffect } from 'react';
-import { useWeb3 } from '@/hooks/useWeb3';
+import { useWeb3 } from './useWeb3';
 import { toast } from 'sonner';
+import { Web3 } from 'web3';
 
 interface RewardData {
-  totalRewards: number;
-  nextReward: number;
-  apy: number;
-  rewardsHistory: RewardHistory[];
+  totalRewards: string;
+  availableRewards: string;
+  totalDividends: string;
+  availableDividends: string;
   isLoading: boolean;
-  distributeRewards: (assetId: number) => Promise<void>;
-  distributeDividends: (assetId: number, amount: string) => Promise<void>;
-  refetch: () => Promise<void>;
+  claimRewards: () => Promise<void>;
+  claimDividends: () => Promise<void>;
+  getRewardHistory: () => Promise<RewardHistory[]>;
+  getDividendHistory: () => Promise<DividendHistory[]>;
 }
 
 interface RewardHistory {
-  assetId: number;
-  assetName: string;
-  amount: number;
+  id: number;
+  amount: string;
   timestamp: number;
   type: 'reward' | 'dividend';
+  assetId: number;
+}
+
+interface DividendHistory {
+  id: number;
+  amount: string;
+  timestamp: number;
+  assetId: number;
+  totalShares: string;
 }
 
 export const useRewards = (): RewardData => {
-  const [totalRewards, setTotalRewards] = useState<number>(0);
-  const [nextReward, setNextReward] = useState<number>(0);
-  const [apy, setApy] = useState<number>(0);
-  const [rewardsHistory, setRewardsHistory] = useState<RewardHistory[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const { account, contract, web3 } = useWeb3();
-
-  const fetchRewardsData = async () => {
-    if (!contract || !account) {
-      setIsLoading(false);
-      return;
-    }
-
+  const [totalRewards, setTotalRewards] = useState('0');
+  const [availableRewards, setAvailableRewards] = useState('0');
+  const [totalDividends, setTotalDividends] = useState('0');
+  const [availableDividends, setAvailableDividends] = useState('0');
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const { account, contract } = useWeb3();
+  const web3 = new Web3();
+  
+  const fetchRewardData = async () => {
+    if (!contract || !account) return;
+    
     try {
-      setIsLoading(true);
+      // ดึงยอด rewards ทั้งหมด
+      const totalRewardsWei = await contract.methods.getTotalRewards(account).call();
+      setTotalRewards(web3.utils.fromWei(totalRewardsWei, 'ether'));
       
-      // TODO: Implement actual contract calls
-      // This is a placeholder for demonstration
-      const mockData = {
-        totalRewards: 0.5,
-        nextReward: 0.05,
-        apy: 8.5,
-        rewardsHistory: [
-          {
-            assetId: 1,
-            assetName: "Sample Asset 1",
-            amount: 0.05,
-            timestamp: Date.now() - 86400000,
-            type: 'reward'
-          },
-          {
-            assetId: 2,
-            assetName: "Sample Asset 2",
-            amount: 0.1,
-            timestamp: Date.now() - 172800000,
-            type: 'dividend'
-          }
-        ]
-      };
-
-      setTotalRewards(mockData.totalRewards);
-      setNextReward(mockData.nextReward);
-      setApy(mockData.apy);
-      setRewardsHistory(mockData.rewardsHistory);
+      // ดึงยอด rewards ที่สามารถถอนได้
+      const availableRewardsWei = await contract.methods.getAvailableRewards(account).call();
+      setAvailableRewards(web3.utils.fromWei(availableRewardsWei, 'ether'));
+      
+      // ดึงยอด dividends ทั้งหมด
+      const totalDividendsWei = await contract.methods.getTotalDividends(account).call();
+      setTotalDividends(web3.utils.fromWei(totalDividendsWei, 'ether'));
+      
+      // ดึงยอด dividends ที่สามารถถอนได้
+      const availableDividendsWei = await contract.methods.getAvailableDividends(account).call();
+      setAvailableDividends(web3.utils.fromWei(availableDividendsWei, 'ether'));
     } catch (error) {
-      console.error("Error fetching rewards data:", error);
-      toast.error("Failed to fetch rewards data");
-    } finally {
-      setIsLoading(false);
+      console.error("Error fetching reward data:", error);
+      toast.error("ไม่สามารถดึงข้อมูล rewards ได้");
     }
   };
-
+  
   useEffect(() => {
-    fetchRewardsData();
+    if (contract && account) {
+      fetchRewardData();
+    }
   }, [contract, account]);
-
-  const distributeRewards = async (assetId: number) => {
+  
+  const claimRewards = async () => {
     if (!contract || !account) {
-      toast.error("Please connect your wallet first");
+      toast.error("กรุณาเชื่อมต่อวอลเล็ตก่อน");
       return;
     }
-
+    
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      // TODO: Implement contract call to distribute rewards
-      await contract.methods.distributeRewards(assetId).send({ from: account });
-      toast.success("Rewards distributed successfully");
-      await fetchRewardsData();
-    } catch (error) {
-      console.error("Error distributing rewards:", error);
-      toast.error("Failed to distribute rewards");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const distributeDividends = async (assetId: number, amount: string) => {
-    if (!contract || !account || !web3) {
-      toast.error("Please connect your wallet first");
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      const weiAmount = web3.utils.toWei(amount, 'ether');
-      // TODO: Implement contract call to distribute dividends
-      await contract.methods.distributeDividends(assetId).send({ 
+      await contract.methods.claimRewards().send({
         from: account,
-        value: weiAmount
+        gas: 3000000
       });
-      toast.success("Dividends distributed successfully");
-      await fetchRewardsData();
+      
+      toast.success("ถอน rewards สำเร็จ");
+      await fetchRewardData();
     } catch (error) {
-      console.error("Error distributing dividends:", error);
-      toast.error("Failed to distribute dividends");
+      console.error("Error claiming rewards:", error);
+      toast.error("ถอน rewards ไม่สำเร็จ");
     } finally {
       setIsLoading(false);
     }
   };
-
+  
+  const claimDividends = async () => {
+    if (!contract || !account) {
+      toast.error("กรุณาเชื่อมต่อวอลเล็ตก่อน");
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      await contract.methods.claimDividends().send({
+        from: account,
+        gas: 3000000
+      });
+      
+      toast.success("ถอน dividends สำเร็จ");
+      await fetchRewardData();
+    } catch (error) {
+      console.error("Error claiming dividends:", error);
+      toast.error("ถอน dividends ไม่สำเร็จ");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const getRewardHistory = async (): Promise<RewardHistory[]> => {
+    if (!contract || !account) return [];
+    
+    try {
+      const history = await contract.methods.getRewardHistory(account).call();
+      return history.map((item: any) => ({
+        id: Number(item.id),
+        amount: web3.utils.fromWei(item.amount, 'ether'),
+        timestamp: Number(item.timestamp),
+        type: item.type,
+        assetId: Number(item.assetId)
+      }));
+    } catch (error) {
+      console.error("Error fetching reward history:", error);
+      toast.error("ไม่สามารถดึงประวัติ rewards ได้");
+      return [];
+    }
+  };
+  
+  const getDividendHistory = async (): Promise<DividendHistory[]> => {
+    if (!contract || !account) return [];
+    
+    try {
+      const history = await contract.methods.getDividendHistory(account).call();
+      return history.map((item: any) => ({
+        id: Number(item.id),
+        amount: web3.utils.fromWei(item.amount, 'ether'),
+        timestamp: Number(item.timestamp),
+        assetId: Number(item.assetId),
+        totalShares: web3.utils.fromWei(item.totalShares, 'ether')
+      }));
+    } catch (error) {
+      console.error("Error fetching dividend history:", error);
+      toast.error("ไม่สามารถดึงประวัติ dividends ได้");
+      return [];
+    }
+  };
+  
   return {
     totalRewards,
-    nextReward,
-    apy,
-    rewardsHistory,
+    availableRewards,
+    totalDividends,
+    availableDividends,
     isLoading,
-    distributeRewards,
-    distributeDividends,
-    refetch: fetchRewardsData
+    claimRewards,
+    claimDividends,
+    getRewardHistory,
+    getDividendHistory
   };
 }; 
