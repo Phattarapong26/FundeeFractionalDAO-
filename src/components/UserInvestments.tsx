@@ -31,8 +31,9 @@ export const UserInvestments = () => {
         setIsLoading(true);
         const userInvestments = await contract.methods.getUserInvestments(account).call();
         
-        if (userInvestments && Array.isArray(userInvestments)) {
-          const formattedInvestments = userInvestments.map((investment: any) => ({
+        if (userInvestments) {
+          const investmentsArray = Array.isArray(userInvestments) ? userInvestments : [];
+          const formattedInvestments = investmentsArray.map((investment: any) => ({
             id: investment.id || '',
             assetId: investment.assetId || '',
             amount: investment.amount || '0',
