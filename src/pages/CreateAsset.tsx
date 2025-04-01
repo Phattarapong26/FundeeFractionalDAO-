@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -16,6 +15,9 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import Web3 from 'web3';
+
+const web3 = new Web3();
 
 const CreateAsset = () => {
   const [name, setName] = useState('');
@@ -74,16 +76,22 @@ const CreateAsset = () => {
       const totalValue = Number(totalShares) * Number(pricePerShare);
       const fundingDeadline = Math.floor(date.getTime() / 1000); // Convert to Unix timestamp
       
+      // แปลงค่าเป็น Wei
+      const pricePerShareWei = web3.utils.toWei(pricePerShare, 'ether');
+      const minInvestmentWei = web3.utils.toWei(minInvestment, 'ether');
+      const maxInvestmentWei = web3.utils.toWei(maxInvestment, 'ether');
+      const totalValueWei = web3.utils.toWei(totalValue.toString(), 'ether');
+      
       await fractionalizeAsset(
         contract,
         name,
         symbol,
         imageUrl,
         Number(totalShares),
-        Number(pricePerShare),
-        Number(minInvestment),
-        Number(maxInvestment),
-        totalValue,
+        Number(pricePerShareWei),
+        Number(minInvestmentWei),
+        Number(maxInvestmentWei),
+        Number(totalValueWei),
         Number(apy),
         fundingDeadline,
         account
