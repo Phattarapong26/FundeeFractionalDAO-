@@ -5,7 +5,7 @@ import { useWeb3 } from '@/hooks/useWeb3';
 import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
-import { formatEther } from 'web3-utils';
+import Web3 from 'web3';
 
 interface FeeHistory {
   feeType: string;
@@ -23,6 +23,7 @@ export const FeeInfo = () => {
     votingFee: '0'
   });
   const [feeHistory, setFeeHistory] = useState<FeeHistory[]>([]);
+  const web3 = new Web3();
 
   // ดึงข้อมูลค่าธรรมเนียมจาก Smart Contract
   const fetchFees = async () => {
@@ -36,9 +37,9 @@ export const FeeInfo = () => {
       ]);
 
       setFees({
-        assetCreationFee: formatEther(assetCreationFee),
+        assetCreationFee: web3.utils.fromWei(assetCreationFee, 'ether'),
         tradingFee: (Number(tradingFee) / 100).toString(), // แปลงจาก basis points เป็น %
-        votingFee: formatEther(votingFee)
+        votingFee: web3.utils.fromWei(votingFee, 'ether')
       });
     } catch (error) {
       console.error("Error fetching fees:", error);
@@ -59,7 +60,7 @@ export const FeeInfo = () => {
 
       const history = events.map(event => ({
         feeType: event.returnValues.feeType,
-        amount: formatEther(event.returnValues.amount),
+        amount: web3.utils.fromWei(event.returnValues.amount, 'ether'),
         timestamp: Number(event.returnValues.timestamp) * 1000 // แปลงเป็น milliseconds
       }));
 
@@ -115,12 +116,16 @@ export const FeeInfo = () => {
       await fetchFeeHistory();
 
       toast.success("จ่ายค่าธรรมเนียมสำเร็จ");
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Error paying fee:", error);
-      if (error.code === 4001) {
-        toast.error("คุณได้ยกเลิกการทำรายการ");
-      } else if (error.message.includes("gas")) {
-        toast.error("ค่าแก๊สไม่เพียงพอ");
+      if (error instanceof Error) {
+        if ('code' in error && error.code === 4001) {
+          toast.error("คุณได้ยกเลิกการทำรายการ");
+        } else if (error.message.includes("gas")) {
+          toast.error("ค่าแก๊สไม่เพียงพอ");
+        } else {
+          toast.error("ไม่สามารถจ่ายค่าธรรมเนียมได้");
+        }
       } else {
         toast.error("ไม่สามารถจ่ายค่าธรรมเนียมได้");
       }
