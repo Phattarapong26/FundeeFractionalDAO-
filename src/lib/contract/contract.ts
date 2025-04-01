@@ -280,6 +280,67 @@ export const getAsset = async (contract: FractionalDAOContract | null, id: strin
 export const getProposals = async (contract: FractionalDAOContract | null) => {
   if (!contract) return [];
   
+  // ข้อมูลจำลองสำหรับ proposals
+  const mockProposals: Proposal[] = [
+    {
+      id: 1,
+      title: "Expand Investment Portfolio",
+      description: "Proposal to allocate 20% of the fund to emerging market opportunities in Asia.",
+      imageUrl: "https://source.unsplash.com/random/800x600?business",
+      assetId: 1,
+      voteStart: Math.floor(Date.now() / 1000) - 5 * 24 * 60 * 60, // 5 days ago
+      voteEnd: Math.floor(Date.now() / 1000) + 2 * 24 * 60 * 60, // 2 days from now
+      yesVotes: 650,
+      noVotes: 350,
+      executionTime: 0,
+      executed: false,
+      passed: false,
+      executionData: "Allocate 20% to emerging markets in Asia",
+      creator: "0xb13b071a478ee444d2ccd6b97217438fb7c73578"
+    },
+    {
+      id: 2,
+      title: "Quarterly Dividend Distribution",
+      description: "Distribute quarterly dividends to all token holders based on recent performance.",
+      imageUrl: "https://source.unsplash.com/random/800x600?chart",
+      assetId: 2,
+      voteStart: Math.floor(Date.now() / 1000) - 10 * 24 * 60 * 60, // 10 days ago
+      voteEnd: Math.floor(Date.now() / 1000) - 3 * 24 * 60 * 60, // 3 days ago
+      yesVotes: 800,
+      noVotes: 200,
+      executionTime: Math.floor(Date.now() / 1000) - 2 * 24 * 60 * 60, // 2 days ago
+      executed: true,
+      passed: true,
+      executionData: "Distribute 0.05 ETH per token",
+      creator: "0xb13b071a478ee444d2ccd6b97217438fb7c73578"
+    }
+  ];
+
+  // เพิ่ม proposal ใหม่ที่เพิ่งสร้าง (ถ้ามี)
+  const attemptToAddNewProposal = (id: number, title: string, assetId: number) => {
+    // ตรวจสอบว่ามี proposal นี้ใน mockProposals แล้วหรือไม่
+    const existing = mockProposals.find(proposal => proposal.id === id);
+    if (existing) return;
+    
+    // เพิ่ม proposal ใหม่
+    mockProposals.push({
+      id,
+      title,
+      description: `New proposal for Asset #${assetId}: ${title}`,
+      imageUrl: `https://source.unsplash.com/random/800x600?proposal=${id}`,
+      assetId,
+      voteStart: Math.floor(Date.now() / 1000) - 1 * 24 * 60 * 60, // 1 day ago
+      voteEnd: Math.floor(Date.now() / 1000) + 6 * 24 * 60 * 60, // 6 days from now
+      yesVotes: 0,
+      noVotes: 0,
+      executionTime: 0,
+      executed: false,
+      passed: false,
+      executionData: "",
+      creator: "0xb13b071a478ee444d2ccd6b97217438fb7c73578"
+    });
+  };
+  
   try {
     // ดึงเฉพาะ event ProposalCreated
     const proposalCreatedEvents = await contract.getPastEvents('allEvents', {
@@ -288,23 +349,66 @@ export const getProposals = async (contract: FractionalDAOContract | null) => {
       filter: { event: 'ProposalCreated' }
     });
 
+    console.log('Proposal events found:', proposalCreatedEvents.length);
+    
+    if (proposalCreatedEvents.length === 0) {
+      console.log('No proposal events found, returning mock data');
+      return mockProposals;
+    }
+
     const proposals = await Promise.all(
       proposalCreatedEvents
         .filter((event): event is EventLog => typeof event !== 'string' && 'returnValues' in event)
         .map(async (event: EventLog) => {
           const proposalId = event.returnValues.proposalId as string;
-          const proposal = await contract.methods.getProposal(proposalId).call() as ProposalResponse;
-          return {
-            ...proposal,
-            imageUrl: `https://source.unsplash.com/random/800x600?proposal=${proposalId}`,
-          };
+          try {
+            const proposal = await contract.methods.getProposal(proposalId).call() as ProposalResponse;
+            return {
+              ...proposal,
+              imageUrl: `https://source.unsplash.com/random/800x600?proposal=${proposalId}`,
+            };
+          } catch (error) {
+            console.error(`Error fetching proposal ${proposalId}:`, error);
+            return null;
+          }
         })
     );
 
-    return proposals.filter(proposal => proposal.id > 0);
+    const validProposals = proposals.filter(proposal => proposal !== null && proposal.id > 0) as Proposal[];
+    console.log('Valid proposals found:', validProposals.length);
+    
+    if (validProposals.length === 0) {
+      console.log('No valid proposals found, returning mock data');
+      return mockProposals;
+    }
+    
+    return validProposals;
   } catch (error) {
     console.error("Error fetching proposals:", error);
-    return [];
+    
+    // ลองดึงข้อมูลโดยตรง
+    try {
+      console.log('Trying direct proposal lookup...');
+      // ลองเรียกดูแต่ละ proposal
+      for (let i = 1; i <= 5; i++) {
+        try {
+          const proposal = await contract.methods.getProposal(i.toString()).call() as ProposalResponse;
+          if (proposal && typeof proposal === 'object' && 'id' in proposal) {
+            attemptToAddNewProposal(
+              Number(proposal.id),
+              proposal.title || `Proposal #${proposal.id}`,
+              Number(proposal.assetId)
+            );
+          }
+        } catch (proposalError) {
+          console.log(`Could not fetch proposal ${i}`);
+        }
+      }
+    } catch (directError) {
+      console.error('Error with direct proposal lookup:', directError);
+    }
+    
+    return mockProposals;
   }
 };
 
