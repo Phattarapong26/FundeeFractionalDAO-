@@ -2,17 +2,12 @@ import { useState, useEffect } from 'react';
 import { useWeb3 } from './useWeb3';
 import { toast } from 'sonner';
 import { Web3 } from 'web3';
+import { getContract } from '@/lib/contract/contract';
 
 interface RewardData {
   totalRewards: string;
-  availableRewards: string;
-  totalDividends: string;
-  availableDividends: string;
-  isLoading: boolean;
-  claimRewards: () => Promise<void>;
-  claimDividends: () => Promise<void>;
-  getRewardHistory: () => Promise<RewardHistory[]>;
-  getDividendHistory: () => Promise<DividendHistory[]>;
+  pendingRewards: string;
+  lastClaimed: number;
 }
 
 interface RewardHistory {
@@ -31,7 +26,48 @@ interface DividendHistory {
   totalShares: string;
 }
 
-export const useRewards = (): RewardData => {
+export const useRewards = (id: string | undefined) => {
+  const { web3, contract } = useWeb3();
+  const [rewards, setRewards] = useState<RewardData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchRewards = async () => {
+      if (!id || !contract) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        // ตรวจสอบว่ามีฟังก์ชัน getRewards หรือไม่
+        if (typeof contract.methods.getRewards !== 'function') {
+          throw new Error('ไม่พบฟังก์ชัน getRewards ใน Smart Contract');
+        }
+
+        const rewardData = await contract.methods.getRewards(id).call();
+        
+        setRewards({
+          totalRewards: rewardData.totalRewards || '0',
+          pendingRewards: rewardData.pendingRewards || '0',
+          lastClaimed: parseInt(rewardData.lastClaimed || '0')
+        });
+      } catch (err) {
+        console.error('Error fetching reward data:', err);
+        setError('ไม่สามารถดึงข้อมูลรางวัลได้');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchRewards();
+  }, [id, contract]);
+
+  return { rewards, isLoading, error };
+};
+
+export const useRewardsOld = (): RewardData => {
   const [totalRewards, setTotalRewards] = useState('0');
   const [availableRewards, setAvailableRewards] = useState('0');
   const [totalDividends, setTotalDividends] = useState('0');

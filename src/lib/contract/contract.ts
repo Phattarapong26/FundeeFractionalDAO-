@@ -1,4 +1,7 @@
 import { FractionalDAOAbi } from './abi';
+import { AbiItem } from 'web3-utils';
+import { Contract } from 'web3-eth-contract';
+import { CONTRACT_ABI, CONTRACT_ADDRESS } from '@/config/contract';
 
 export const CONTRACT_ADDRESS = '0x98E1c5867F2eb7036309E30c021E2ACD3Bb81172';
 
@@ -45,36 +48,51 @@ export interface RewardInfo {
   assetSold: boolean;
 }
 
-export const getContract = (provider: any) => {
-  if (!provider) return null;
-  return new provider.eth.Contract(FractionalDAOAbi, CONTRACT_ADDRESS);
+export const getContract = (web3: any): Contract | null => {
+  try {
+    if (!web3 || !CONTRACT_ADDRESS) {
+      console.error('Web3 หรือ Contract Address ไม่ถูกต้อง');
+      return null;
+    }
+
+    return new web3.eth.Contract(CONTRACT_ABI as AbiItem[], CONTRACT_ADDRESS);
+  } catch (error) {
+    console.error('Error creating contract instance:', error);
+    return null;
+  }
 };
 
-export const getAssets = async (contract: any) => {
-  if (!contract) return [];
-  
+export const getAssets = async (contract: Contract | null) => {
+  if (!contract) {
+    throw new Error('Contract ไม่ถูกต้อง');
+  }
+
   try {
-    // ดึงข้อมูลจาก event logs
-    const assetCreatedEvents = await contract.getPastEvents('AssetCreated', {
-      fromBlock: 0,
-      toBlock: 'latest'
-    });
+    const assets = await contract.methods.getAssets().call();
+    return assets;
+  } catch (error: any) {
+    console.error('Error fetching assets:', error);
+    if (error.message.includes('Internal JSON-RPC error')) {
+      throw new Error('ไม่สามารถเชื่อมต่อกับเครือข่ายได้ กรุณาลองใหม่อีกครั้ง');
+    }
+    throw error;
+  }
+};
 
-    const assets = await Promise.all(
-      assetCreatedEvents.map(async (event: any) => {
-        const assetId = event.returnValues.assetId;
-        const asset = await contract.methods.getAsset(assetId).call();
-        return {
-          ...asset,
-          imageUrl: `https://source.unsplash.com/random/800x600?asset=${assetId}`,
-        };
-      })
-    );
+export const getAsset = async (contract: Contract | null, id: string) => {
+  if (!contract) {
+    throw new Error('Contract ไม่ถูกต้อง');
+  }
 
-    return assets.filter(asset => asset.id > 0);
-  } catch (error) {
-    console.error("Error fetching assets:", error);
-    return [];
+  try {
+    const asset = await contract.methods.getAsset(id).call();
+    return asset;
+  } catch (error: any) {
+    console.error('Error fetching asset:', error);
+    if (error.message.includes('Internal JSON-RPC error')) {
+      throw new Error('ไม่สามารถเชื่อมต่อกับเครือข่ายได้ กรุณาลองใหม่อีกครั้ง');
+    }
+    throw error;
   }
 };
 
