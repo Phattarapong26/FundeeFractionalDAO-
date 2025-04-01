@@ -68,36 +68,10 @@ export const Web3Provider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.ethereum) {
-      const handleAccountsChanged = async (accounts: string[]) => {
-        if (accounts.length > 0) {
-          const isCorrectNetwork = await checkNetwork();
-          if (!isCorrectNetwork) return;
-
-          setAccount(accounts[0]);
-          await initializeWeb3(accounts);
-        } else {
-          setAccount(null);
-          setWeb3(null);
-          setContract(null);
-          setNetworkId(null);
-          toast.info('Wallet disconnected');
-        }
-      };
-
-      const handleChainChanged = async () => {
-        const isCorrectNetwork = await checkNetwork();
-        if (!isCorrectNetwork) {
-          window.location.reload();
-        }
-      };
-
-      window.ethereum.on('accountsChanged', handleAccountsChanged);
-      window.ethereum.on('chainChanged', handleChainChanged);
-
-      const checkConnection = async () => {
+    const checkConnection = async () => {
+      if (typeof window !== 'undefined' && window.ethereum) {
         try {
-          const accounts = await window.ethereum?.request({ method: 'eth_accounts' });
+          const accounts = await window.ethereum.request({ method: 'eth_accounts' });
           if (accounts && accounts.length > 0) {
             const isCorrectNetwork = await checkNetwork();
             if (!isCorrectNetwork) return;
@@ -108,9 +82,42 @@ export const Web3Provider = ({ children }: { children: ReactNode }) => {
         } catch (error) {
           console.error('Error checking connection:', error);
         }
-      };
+      }
+    };
 
-      checkConnection();
+    checkConnection();
+
+    const handleAccountsChanged = async (accounts: string[]) => {
+      if (accounts.length > 0) {
+        const isCorrectNetwork = await checkNetwork();
+        if (!isCorrectNetwork) return;
+
+        setAccount(accounts[0]);
+        await initializeWeb3(accounts);
+      } else {
+        setAccount(null);
+        setWeb3(null);
+        setContract(null);
+        setNetworkId(null);
+        toast.info('Wallet disconnected');
+      }
+    };
+
+    const handleChainChanged = async () => {
+      const isCorrectNetwork = await checkNetwork();
+      if (!isCorrectNetwork) {
+        window.location.reload();
+      }
+    };
+
+    if (window.ethereum) {
+      window.ethereum.on('accountsChanged', handleAccountsChanged);
+      window.ethereum.on('chainChanged', handleChainChanged);
+
+      return () => {
+        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
+        window.ethereum.removeListener('chainChanged', handleChainChanged);
+      };
     }
   }, []);
 
@@ -122,7 +129,9 @@ export const Web3Provider = ({ children }: { children: ReactNode }) => {
 
     setIsConnecting(true);
     try {
+      // ขอสิทธิ์การเข้าถึงบัญชี
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      
       if (accounts && accounts.length > 0) {
         const isCorrectNetwork = await checkNetwork();
         if (!isCorrectNetwork) {
@@ -135,9 +144,13 @@ export const Web3Provider = ({ children }: { children: ReactNode }) => {
         setIsConnecting(false);
         return success;
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error connecting wallet:', error);
-      toast.error('ไม่สามารถเชื่อมต่อ Wallet ได้');
+      if (error.code === 4001) {
+        toast.error('คุณได้ปฏิเสธการเชื่อมต่อ Wallet');
+      } else {
+        toast.error('ไม่สามารถเชื่อมต่อ Wallet ได้');
+      }
     }
     setIsConnecting(false);
     return false;

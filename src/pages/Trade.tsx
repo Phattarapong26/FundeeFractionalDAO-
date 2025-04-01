@@ -16,7 +16,8 @@ import {
   ChevronRight,
   RefreshCw,
   Users,
-  Activity
+  Activity,
+  TrendingUp
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
