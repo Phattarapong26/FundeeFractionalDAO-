@@ -8,10 +8,10 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 export default function Analytics() {
   const { id } = useParams();
   const { 
-    priceHistory, 
-    volumeHistory, 
-    holderHistory, 
-    tradingActivity, 
+    priceHistory = [], 
+    volumeHistory = [], 
+    holderHistory = [], 
+    tradingActivity = [], 
     isLoading 
   } = useAssetAnalytics(Number(id));
 
@@ -32,8 +32,10 @@ export default function Analytics() {
                 <p className="text-2xl font-bold">
                   {isLoading ? (
                     <Loader2 className="animate-spin" />
+                  ) : priceHistory.length > 0 ? (
+                    `${Number(priceHistory[priceHistory.length - 1].price).toLocaleString('th-TH')} ETH`
                   ) : (
-                    `${Number(priceHistory[priceHistory.length - 1]?.price || 0).toLocaleString('th-TH')} ETH`
+                    '0 ETH'
                   )}
                 </p>
               </div>
