@@ -69,7 +69,7 @@ export const UserInvestments = () => {
     );
   }
 
-  if (!investments || investments.length === 0) {
+  if (!Array.isArray(investments) || investments.length === 0) {
     return (
       <div className="text-center text-muted-foreground">
         ไม่พบข้อมูลการลงทุน
