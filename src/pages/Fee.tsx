@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { FeeInfo } from '@/components/Fee/FeeInfo';
-import { PageLayout } from '@/components/Layout/PageLayout';
+import PageLayout from '@/components/Layout/PageLayout';
 
 export const Fee = () => {
   return (
