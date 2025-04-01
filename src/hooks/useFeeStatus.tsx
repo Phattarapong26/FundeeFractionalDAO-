@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useWeb3 } from '@/hooks/useWeb3';
-import { checkFeeStatus, payFeeWithETH, payFeeWithToken, CONTRACT_ADDRESS } from '@/lib/contract/contract';
+import { checkFeeStatus, payFeeWithETH, payFeeWithToken } from '@/lib/contract/contract';
+import { CONTRACT_ADDRESS } from '@/config/contract';
 import { approveTokenSpending, PLATFORM_TOKEN_ADDRESS } from '@/lib/contract/platformToken';
 import { ERC20ABI } from '@/lib/contract/erc20Abi';
 import { toast } from 'sonner';
