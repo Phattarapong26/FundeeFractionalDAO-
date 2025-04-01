@@ -2,12 +2,10 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { toast } from 'sonner';
 import { getContract } from '@/lib/contract/contract';
 
-// รองรับทั้ง Mainnet และ Testnet
+// รองรับทั้ง Mainnet และ Holesky Testnet
 const SUPPORTED_NETWORKS = {
   '1': 'Ethereum Mainnet',
-  '5': 'Goerli Testnet',
-  '11155111': 'Sepolia Testnet',
-  '80001': 'Mumbai Testnet'
+  '17000': 'Holesky Testnet'
 };
 
 interface Web3ContextType {

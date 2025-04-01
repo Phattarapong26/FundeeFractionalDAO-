@@ -54,12 +54,11 @@ const NavBar = () => {
   };
 
   const navItems = [
-    { name: 'Home', path: '/', icon: Home},
-    { name: 'Marketplace', path: '/marketplace' ,icon: Store },
-    { name: 'Trade', path: '/trade' ,icon: BarChart},
+    { name: 'Home', path: '/', icon: Home },
+    { name: 'Marketplace', path: '/marketplace', icon: Store },
+    { name: 'Trade', path: '/trade', icon: BarChart },
     { name: 'Dashboard', path: '/dashboard', icon: BarChart2 },
-    { name: 'Governance', path: '/governance', icon: ShieldCheck },
-    { name: 'Rewards', path: '/rewards', icon: Coins },
+    { name: 'Governance', path: '/governance', icon: ShieldCheck }
   ];
 
   return (
@@ -79,32 +78,36 @@ const NavBar = () => {
         </div>
         
         <nav className="hidden md:flex items-center space-x-8">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={({ isActive }) =>
-                `relative px-1 py-2 text-base font-medium transition-colors duration-200 ${
-                  isActive ? 'text-dao' : 'text-gray-600 hover:text-gray-900'
-                }`
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  {item.name}
-                  {isActive && (
-                    <motion.div
-                      layoutId="navbar-indicator"
-                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-dao"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.3 }}
-                    />
-                  )}
-                </>
-              )}
-            </NavLink>
-          ))}
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                className={({ isActive }) =>
+                  `relative px-1 py-2 text-base font-medium transition-colors duration-200 flex items-center gap-2 ${
+                    isActive ? 'text-dao' : 'text-gray-600 hover:text-gray-900'
+                  }`
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <Icon size={18} />
+                    {item.name}
+                    {isActive && (
+                      <motion.div
+                        layoutId="navbar-indicator"
+                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-dao"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.3 }}
+                      />
+                    )}
+                  </>
+                )}
+              </NavLink>
+            );
+          })}
         </nav>
 
         {account ? (
@@ -121,27 +124,22 @@ const NavBar = () => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuItem onClick={() => handleNavigate('/dashboard')}>
+                  <BarChart2 size={16} className="mr-2" />
                   Dashboard
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleNavigate('/marketplace')}>
+                  <Store size={16} className="mr-2" />
                   Marketplace
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleNavigate('/trade')}>
+                  <BarChart size={16} className="mr-2" />
                   Trade
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleNavigate('/governance')}>
+                  <ShieldCheck size={16} className="mr-2" />
                   Governance
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleNavigate('/rewards')}>
-                  Rewards
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleNavigate('/analytics')}>
-                  Analytics
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleNavigate('/security-settings')}>
-                  Security Settings
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
+                
                 <DropdownMenuItem 
                   className="text-red-500 focus:text-red-500" 
                   onClick={handleDisconnect}
