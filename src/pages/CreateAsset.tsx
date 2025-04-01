@@ -82,6 +82,21 @@ const CreateAsset = () => {
       const maxInvestmentWei = web3.utils.toWei(maxInvestment, 'ether');
       const totalValueWei = web3.utils.toWei(totalValue.toString(), 'ether');
       
+      console.log("Wei values:", {
+        pricePerShareWei,
+        minInvestmentWei,
+        maxInvestmentWei,
+        totalValueWei
+      });
+      
+      // ตรวจสอบว่าค่าที่แปลงเป็น Wei แล้วเป็นจำนวนเต็ม ไม่มีทศนิยม และไม่มี exponential notation
+      if (pricePerShareWei.includes('.') || pricePerShareWei.includes('e') ||
+          minInvestmentWei.includes('.') || minInvestmentWei.includes('e') ||
+          maxInvestmentWei.includes('.') || maxInvestmentWei.includes('e') ||
+          totalValueWei.includes('.') || totalValueWei.includes('e')) {
+        throw new Error("Wei values must be integers without decimals");
+      }
+      
       await fractionalizeAsset(
         contract,
         name,

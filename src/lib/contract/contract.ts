@@ -378,6 +378,27 @@ export const fractionalizeAsset = async (
   if (!contract) throw new Error('Contract is not initialized');
   
   try {
+    console.log("Parameters for createAsset:", {
+      name,
+      symbol,
+      imageUrl,
+      totalShares: totalShares.toString(),
+      pricePerShare,
+      minInvestment,
+      maxInvestment,
+      totalValue,
+      apy: apy.toString(),
+      fundingDeadline: fundingDeadline.toString()
+    });
+    
+    // ตรวจสอบว่าได้แปลงค่าเป็น Wei แล้วหรือยัง (ค่าควรเป็นจำนวนเต็มไม่มีทศนิยม และไม่มี e)
+    if (pricePerShare.includes('.') || pricePerShare.includes('e') || 
+        minInvestment.includes('.') || minInvestment.includes('e') ||
+        maxInvestment.includes('.') || maxInvestment.includes('e') ||
+        totalValue.includes('.') || totalValue.includes('e')) {
+      throw new Error('Values must be in Wei format (no decimals)');
+    }
+    
     return await contract.methods.createAsset(
       name,
       symbol,
