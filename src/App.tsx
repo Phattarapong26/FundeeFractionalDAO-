@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.css';
 import { Toaster } from '@/components/ui/sonner';
 import { Web3Provider } from '@/hooks/useWeb3';
