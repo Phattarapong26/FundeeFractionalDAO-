@@ -1,9 +1,42 @@
-import { FractionalDAOAbi } from './abi';
 import { AbiItem } from 'web3-utils';
 import { Contract } from 'web3-eth-contract';
 import { CONTRACT_ABI, CONTRACT_ADDRESS } from '@/config/contract';
+import Web3 from 'web3';
 
-export const CONTRACT_ADDRESS = '0x98E1c5867F2eb7036309E30c021E2ACD3Bb81172';
+// กำหนด type สำหรับ contract
+type FractionalDAOContract = Contract<typeof CONTRACT_ABI>;
+
+// กำหนด type สำหรับ event
+interface EventLog {
+  event: string;
+  address: string;
+  topics: string[];
+  data: string;
+  returnValues: {
+    [key: string]: string | number | boolean;
+  };
+}
+
+// กำหนด type สำหรับ event names
+type EventName = 'ProposalCreated' | 'Transfer' | 'allEvents' | 'ALLEVENTS';
+
+// กำหนด type สำหรับ proposal
+interface ProposalResponse {
+  id: number;
+  title: string;
+  description: string;
+  imageUrl: string;
+  assetId: number;
+  voteStart: number;
+  voteEnd: number;
+  yesVotes: number;
+  noVotes: number;
+  executionTime: number;
+  executed: boolean;
+  passed: boolean;
+  executionData: string;
+  creator: string;
+}
 
 export interface Asset {
   id: number;
@@ -48,10 +81,10 @@ export interface RewardInfo {
   assetSold: boolean;
 }
 
-export const getContract = (web3: any): Contract | null => {
+export const getContract = (web3: Web3): FractionalDAOContract | null => {
   try {
-    if (!web3 || !CONTRACT_ADDRESS) {
-      console.error('Web3 หรือ Contract Address ไม่ถูกต้อง');
+    if (!web3) {
+      console.error('Web3 is not initialized');
       return null;
     }
 
@@ -62,59 +95,61 @@ export const getContract = (web3: any): Contract | null => {
   }
 };
 
-export const getAssets = async (contract: Contract | null) => {
+export const getAssets = async (contract: FractionalDAOContract | null) => {
   if (!contract) {
-    throw new Error('Contract ไม่ถูกต้อง');
+    throw new Error('Contract is not initialized');
   }
 
   try {
     const assets = await contract.methods.getAssets().call();
     return assets;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching assets:', error);
-    if (error.message.includes('Internal JSON-RPC error')) {
-      throw new Error('ไม่สามารถเชื่อมต่อกับเครือข่ายได้ กรุณาลองใหม่อีกครั้ง');
+    if (error instanceof Error && error.message.includes('Internal JSON-RPC error')) {
+      throw new Error('Network connection error. Please try again.');
     }
     throw error;
   }
 };
 
-export const getAsset = async (contract: Contract | null, id: string) => {
+export const getAsset = async (contract: FractionalDAOContract | null, id: string) => {
   if (!contract) {
-    throw new Error('Contract ไม่ถูกต้อง');
+    throw new Error('Contract is not initialized');
   }
 
   try {
     const asset = await contract.methods.getAsset(id).call();
     return asset;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching asset:', error);
-    if (error.message.includes('Internal JSON-RPC error')) {
-      throw new Error('ไม่สามารถเชื่อมต่อกับเครือข่ายได้ กรุณาลองใหม่อีกครั้ง');
+    if (error instanceof Error && error.message.includes('Internal JSON-RPC error')) {
+      throw new Error('Network connection error. Please try again.');
     }
     throw error;
   }
 };
 
-export const getProposals = async (contract: any) => {
+export const getProposals = async (contract: FractionalDAOContract | null) => {
   if (!contract) return [];
   
   try {
-    // ดึงข้อมูลจาก event logs
-    const proposalCreatedEvents = await contract.getPastEvents('ProposalCreated', {
+    const proposalCreatedEvents = await contract.getPastEvents('allEvents', {
       fromBlock: 0,
-      toBlock: 'latest'
+      toBlock: 'latest',
+      filter: { event: 'ProposalCreated' }
     });
 
     const proposals = await Promise.all(
-      proposalCreatedEvents.map(async (event: any) => {
-        const proposalId = event.returnValues.proposalId;
-        const proposal = await contract.methods.getProposal(proposalId).call();
-        return {
-          ...proposal,
-          imageUrl: `https://source.unsplash.com/random/800x600?proposal=${proposalId}`,
-        };
-      })
+      proposalCreatedEvents
+        .filter((event): event is EventLog => typeof event !== 'string' && 'returnValues' in event)
+        .map(async (event: EventLog) => {
+          const proposalId = event.returnValues.proposalId as string;
+          const proposal = await contract.methods.getProposal(proposalId).call() as ProposalResponse;
+          return {
+            ...proposal,
+            imageUrl: `https://source.unsplash.com/random/800x600?proposal=${proposalId}`,
+          };
+        })
     );
 
     return proposals.filter(proposal => proposal.id > 0);
@@ -124,40 +159,41 @@ export const getProposals = async (contract: any) => {
   }
 };
 
-export const getAssetOwnershipHistory = async (contract: any, assetId: number) => {
+export const getAssetOwnershipHistory = async (contract: FractionalDAOContract | null, assetId: number) => {
   if (!contract || !assetId) return [];
   
   try {
-    // ดึงข้อมูลจาก event logs
-    const transferEvents = await contract.getPastEvents('Transfer', {
+    const transferEvents = await contract.getPastEvents('allEvents', {
       fromBlock: 0,
       toBlock: 'latest',
-      filter: { assetId }
+      filter: { event: 'Transfer', assetId }
     });
 
-    return transferEvents.map((event: any) => ({
-      owner: event.returnValues.to,
-      shares: Number(event.returnValues.amount),
-      timestamp: Number(event.returnValues.timestamp)
-    }));
+    return transferEvents
+      .filter((event): event is EventLog => typeof event !== 'string' && 'returnValues' in event)
+      .map((event: EventLog) => ({
+        owner: event.returnValues.to as string,
+        shares: Number(event.returnValues.amount),
+        timestamp: Number(event.returnValues.timestamp)
+      }));
   } catch (error) {
     console.error("Error fetching asset ownership history:", error);
     return [];
   }
 };
 
-export const getUserShares = async (contract: any, address: string) => {
-  if (!contract || !address) return 0;
+export const getUserShares = async (contract: FractionalDAOContract | null, address: string) => {
+  if (!contract || !address) return '0';
   
   try {
     return await contract.methods.getUserShares(address).call();
   } catch (error) {
     console.error("Error fetching user shares:", error);
-    return 0;
+    return '0';
   }
 };
 
-export const checkFeeStatus = async (contract: any, address: string) => {
+export const checkFeeStatus = async (contract: FractionalDAOContract | null, address: string) => {
   if (!contract || !address) return false;
   
   try {
@@ -168,15 +204,15 @@ export const checkFeeStatus = async (contract: any, address: string) => {
   }
 };
 
-export const payFeeWithETH = async (contract: any, from: string) => {
-  if (!contract) throw new Error('Contract not initialized');
+export const payFeeWithETH = async (contract: FractionalDAOContract | null, from: string) => {
+  if (!contract) throw new Error('Contract is not initialized');
   
   try {
     const ethFeeValue = "50000000000000000"; // 0.05 ETH as per contract
     return await contract.methods.payFeeWithETH().send({
       from,
       value: ethFeeValue,
-      gas: 300000
+      gas: "300000"
     });
   } catch (error) {
     console.error("Error paying ETH fee:", error);
@@ -184,13 +220,13 @@ export const payFeeWithETH = async (contract: any, from: string) => {
   }
 };
 
-export const payFeeWithToken = async (contract: any, from: string) => {
-  if (!contract) throw new Error('Contract not initialized');
+export const payFeeWithToken = async (contract: FractionalDAOContract | null, from: string) => {
+  if (!contract) throw new Error('Contract is not initialized');
   
   try {
     return await contract.methods.payFeeWithToken().send({
       from,
-      gas: 300000
+      gas: "300000"
     });
   } catch (error) {
     console.error("Error paying token fee:", error);
@@ -198,14 +234,20 @@ export const payFeeWithToken = async (contract: any, from: string) => {
   }
 };
 
-export const purchaseShares = async (contract: any, assetId: number, amount: number, value: string, from: string) => {
-  if (!contract) throw new Error('Contract not initialized');
+export const purchaseShares = async (
+  contract: FractionalDAOContract | null, 
+  assetId: number, 
+  amount: number, 
+  value: string, 
+  from: string
+) => {
+  if (!contract) throw new Error('Contract is not initialized');
   
   try {
-    return await contract.methods.purchaseShares(assetId, amount).send({
+    return await contract.methods.purchaseShares(assetId.toString(), amount.toString()).send({
       from,
       value,
-      gas: 3000000
+      gas: "3000000"
     });
   } catch (error) {
     console.error("Error purchasing shares:", error);
@@ -213,13 +255,18 @@ export const purchaseShares = async (contract: any, assetId: number, amount: num
   }
 };
 
-export const sellShares = async (contract: any, assetId: number, amount: number, from: string) => {
-  if (!contract) throw new Error('Contract not initialized');
+export const sellShares = async (
+  contract: FractionalDAOContract | null, 
+  assetId: number, 
+  amount: number, 
+  from: string
+) => {
+  if (!contract) throw new Error('Contract is not initialized');
   
   try {
-    return await contract.methods.sellShares(assetId, amount).send({
+    return await contract.methods.sellShares(assetId.toString(), amount.toString()).send({
       from,
-      gas: 3000000
+      gas: "3000000"
     });
   } catch (error) {
     console.error("Error selling shares:", error);
@@ -228,7 +275,7 @@ export const sellShares = async (contract: any, assetId: number, amount: number,
 };
 
 export const createProposal = async (
-  contract: any,
+  contract: FractionalDAOContract | null,
   assetId: number,
   title: string,
   description: string,
@@ -236,18 +283,18 @@ export const createProposal = async (
   executionData: string,
   from: string
 ) => {
-  if (!contract) throw new Error('Contract not initialized');
+  if (!contract) throw new Error('Contract is not initialized');
   
   try {
     return await contract.methods.createProposal(
-      assetId,
+      assetId.toString(),
       title,
       description,
       imageUrl,
       executionData
     ).send({
       from,
-      gas: 3000000
+      gas: "3000000"
     });
   } catch (error) {
     console.error("Error creating proposal:", error);
@@ -255,13 +302,18 @@ export const createProposal = async (
   }
 };
 
-export const castVote = async (contract: any, proposalId: number, support: boolean, from: string) => {
-  if (!contract) throw new Error('Contract not initialized');
+export const castVote = async (
+  contract: FractionalDAOContract | null, 
+  proposalId: number, 
+  support: boolean, 
+  from: string
+) => {
+  if (!contract) throw new Error('Contract is not initialized');
   
   try {
-    return await contract.methods.castVote(proposalId, support).send({
+    return await contract.methods.castVote(proposalId.toString(), support).send({
       from,
-      gas: 3000000
+      gas: "3000000"
     });
   } catch (error) {
     console.error("Error casting vote:", error);
@@ -269,13 +321,17 @@ export const castVote = async (contract: any, proposalId: number, support: boole
   }
 };
 
-export const executeProposal = async (contract: any, proposalId: number, from: string) => {
-  if (!contract) throw new Error('Contract not initialized');
+export const executeProposal = async (
+  contract: FractionalDAOContract | null, 
+  proposalId: number, 
+  from: string
+) => {
+  if (!contract) throw new Error('Contract is not initialized');
   
   try {
-    return await contract.methods.executeProposal(proposalId).send({
+    return await contract.methods.executeProposal(proposalId.toString()).send({
       from,
-      gas: 3000000
+      gas: "3000000"
     });
   } catch (error) {
     console.error("Error executing proposal:", error);
@@ -284,7 +340,7 @@ export const executeProposal = async (contract: any, proposalId: number, from: s
 };
 
 export const fractionalizeAsset = async (
-  contract: any,
+  contract: FractionalDAOContract | null,
   name: string,
   symbol: string,
   imageUrl: string,
@@ -297,23 +353,23 @@ export const fractionalizeAsset = async (
   fundingDeadline: number,
   from: string
 ) => {
-  if (!contract) throw new Error('Contract not initialized');
+  if (!contract) throw new Error('Contract is not initialized');
   
   try {
     return await contract.methods.createAsset(
       name,
       symbol,
       imageUrl,
-      totalShares,
-      pricePerShare,
-      minInvestment,
-      maxInvestment,
-      totalValue,
-      apy,
-      fundingDeadline
+      totalShares.toString(),
+      pricePerShare.toString(),
+      minInvestment.toString(),
+      maxInvestment.toString(),
+      totalValue.toString(),
+      apy.toString(),
+      fundingDeadline.toString()
     ).send({
       from,
-      gas: 3000000
+      gas: "3000000"
     });
   } catch (error) {
     console.error("Error fractionalizing asset:", error);
@@ -321,13 +377,17 @@ export const fractionalizeAsset = async (
   }
 };
 
-export const distributeRewards = async (contract: any, assetId: number, from: string) => {
-  if (!contract) throw new Error('Contract not initialized');
+export const distributeRewards = async (
+  contract: FractionalDAOContract | null, 
+  assetId: number, 
+  from: string
+) => {
+  if (!contract) throw new Error('Contract is not initialized');
   
   try {
-    return await contract.methods.distributeRewards(assetId).send({
+    return await contract.methods.distributeRewards(assetId.toString()).send({
       from,
-      gas: 3000000
+      gas: "3000000"
     });
   } catch (error) {
     console.error("Error distributing rewards:", error);
@@ -335,14 +395,19 @@ export const distributeRewards = async (contract: any, assetId: number, from: st
   }
 };
 
-export const distributeDividends = async (contract: any, assetId: number, amount: string, from: string) => {
-  if (!contract) throw new Error('Contract not initialized');
+export const distributeDividends = async (
+  contract: FractionalDAOContract | null, 
+  assetId: number, 
+  amount: string, 
+  from: string
+) => {
+  if (!contract) throw new Error('Contract is not initialized');
   
   try {
-    return await contract.methods.distributeDividends(assetId).send({
+    return await contract.methods.distributeDividends(assetId.toString()).send({
       from,
       value: amount,
-      gas: 3000000
+      gas: "3000000"
     });
   } catch (error) {
     console.error("Error distributing dividends:", error);
@@ -350,14 +415,19 @@ export const distributeDividends = async (contract: any, assetId: number, amount
   }
 };
 
-export const sellAsset = async (contract: any, assetId: number, saleAmount: string, from: string) => {
-  if (!contract) throw new Error('Contract not initialized');
+export const sellAsset = async (
+  contract: FractionalDAOContract | null, 
+  assetId: number, 
+  saleAmount: string, 
+  from: string
+) => {
+  if (!contract) throw new Error('Contract is not initialized');
   
   try {
-    return await contract.methods.sellAsset(assetId).send({
+    return await contract.methods.sellAsset(assetId.toString()).send({
       from,
       value: saleAmount,
-      gas: 3000000
+      gas: "3000000"
     });
   } catch (error) {
     console.error("Error selling asset:", error);
@@ -365,13 +435,18 @@ export const sellAsset = async (contract: any, assetId: number, saleAmount: stri
   }
 };
 
-export const updateAssetValue = async (contract: any, assetId: number, newValue: number, from: string) => {
-  if (!contract) throw new Error('Contract not initialized');
+export const updateAssetValue = async (
+  contract: FractionalDAOContract | null, 
+  assetId: number, 
+  newValue: number, 
+  from: string
+) => {
+  if (!contract) throw new Error('Contract is not initialized');
   
   try {
-    return await contract.methods.updateAssetValue(assetId, newValue).send({
+    return await contract.methods.updateAssetValue(assetId.toString(), newValue.toString()).send({
       from,
-      gas: 3000000
+      gas: "3000000"
     });
   } catch (error) {
     console.error("Error updating asset value:", error);
@@ -379,7 +454,7 @@ export const updateAssetValue = async (contract: any, assetId: number, newValue:
   }
 };
 
-export const getRewardInfo = async (contract: any, assetId: number) => {
+export const getRewardInfo = async (contract: FractionalDAOContract | null, assetId: number) => {
   if (!contract) return null;
   
   try {
@@ -399,5 +474,146 @@ export const getRewardInfo = async (contract: any, assetId: number) => {
   } catch (error) {
     console.error("Error fetching reward info:", error);
     return null;
+  }
+};
+
+export const createOrder = async (
+  contract: FractionalDAOContract | null,
+  assetId: number,
+  amount: number,
+  price: number,
+  isBuyOrder: boolean,
+  from: string
+) => {
+  if (!contract) throw new Error('Contract is not initialized');
+  
+  try {
+    return await contract.methods.createOrder(
+      assetId.toString(),
+      amount.toString(),
+      price.toString(),
+      isBuyOrder
+    ).send({
+      from,
+      value: isBuyOrder ? (amount * price).toString() : '0',
+      gas: "3000000"
+    });
+  } catch (error) {
+    console.error("Error creating order:", error);
+    throw error;
+  }
+};
+
+export const fillOrder = async (
+  contract: FractionalDAOContract | null, 
+  orderId: number, 
+  from: string
+) => {
+  if (!contract) throw new Error('Contract is not initialized');
+  
+  try {
+    return await contract.methods.fillOrder(orderId.toString()).send({
+      from,
+      gas: "3000000"
+    });
+  } catch (error) {
+    console.error("Error filling order:", error);
+    throw error;
+  }
+};
+
+export const cancelOrder = async (
+  contract: FractionalDAOContract | null, 
+  orderId: number, 
+  from: string
+) => {
+  if (!contract) throw new Error('Contract is not initialized');
+  
+  try {
+    return await contract.methods.cancelOrder(orderId.toString()).send({
+      from,
+      gas: "3000000"
+    });
+  } catch (error) {
+    console.error("Error canceling order:", error);
+    throw error;
+  }
+};
+
+export const getBestPrices = async (
+  contract: FractionalDAOContract | null, 
+  assetId: number
+) => {
+  if (!contract) throw new Error('Contract is not initialized');
+  
+  try {
+    return await contract.methods.getBestPrices(assetId.toString()).call();
+  } catch (error) {
+    console.error("Error getting best prices:", error);
+    throw error;
+  }
+};
+
+export const updateAssetStatus = async (
+  contract: FractionalDAOContract | null, 
+  assetId: number, 
+  isActive: boolean, 
+  from: string
+) => {
+  if (!contract) throw new Error('Contract is not initialized');
+  
+  try {
+    return await contract.methods.updateAssetStatus(assetId.toString(), isActive).send({
+      from,
+      gas: "3000000"
+    });
+  } catch (error) {
+    console.error("Error updating asset status:", error);
+    throw error;
+  }
+};
+
+export const getAssetInvestors = async (
+  contract: FractionalDAOContract | null, 
+  assetId: number
+) => {
+  if (!contract) throw new Error('Contract is not initialized');
+  
+  try {
+    return await contract.methods.getAssetInvestors(assetId.toString()).call();
+  } catch (error) {
+    console.error("Error getting asset investors:", error);
+    throw error;
+  }
+};
+
+export const getLastRewardTimestamp = async (
+  contract: FractionalDAOContract | null, 
+  assetId: number
+) => {
+  if (!contract) throw new Error('Contract is not initialized');
+  
+  try {
+    return await contract.methods.getLastRewardTimestamp(assetId.toString()).call();
+  } catch (error) {
+    console.error("Error getting last reward timestamp:", error);
+    throw error;
+  }
+};
+
+export const withdrawFunds = async (
+  contract: FractionalDAOContract | null, 
+  from: string
+) => {
+  if (!contract) throw new Error('Contract is not initialized');
+  
+  try {
+    return await contract.methods.withdrawFunds().send({
+      from,
+      gas: "3000000"
+    });
+  } catch (error) {
+    console.error("Error withdrawing funds:", error);
+    throw error;
   }
 };
