@@ -13,6 +13,14 @@ interface Investment {
   status: string;
 }
 
+interface ContractResponse {
+  id: string;
+  assetId: string;
+  amount: string;
+  timestamp: string | number;
+  status: string;
+}
+
 export const UserInvestments = () => {
   const { account, contract } = useWeb3();
   const [investments, setInvestments] = useState<Investment[]>([]);
@@ -29,21 +37,40 @@ export const UserInvestments = () => {
 
       try {
         setIsLoading(true);
+        setError(null);
+        
         const userInvestments = await contract.methods.getUserInvestments(account).call();
         
-        if (userInvestments) {
-          const investmentsArray = Array.isArray(userInvestments) ? userInvestments : [];
-          const formattedInvestments = investmentsArray.map((investment: any) => ({
-            id: investment.id || '',
-            assetId: investment.assetId || '',
-            amount: investment.amount || '0',
-            timestamp: parseInt(investment.timestamp) || 0,
-            status: investment.status || 'pending'
-          }));
-          setInvestments(formattedInvestments);
-        } else {
+        if (!userInvestments) {
           setInvestments([]);
+          return;
         }
+
+        const investmentsArray = Array.isArray(userInvestments) ? userInvestments : [];
+        
+        const formattedInvestments = investmentsArray
+          .filter((investment): investment is ContractResponse => {
+            return (
+              typeof investment === 'object' &&
+              investment !== null &&
+              'id' in investment &&
+              'assetId' in investment &&
+              'amount' in investment &&
+              'timestamp' in investment &&
+              'status' in investment
+            );
+          })
+          .map((investment: ContractResponse) => ({
+            id: String(investment.id || ''),
+            assetId: String(investment.assetId || ''),
+            amount: String(investment.amount || '0'),
+            timestamp: typeof investment.timestamp === 'string' 
+              ? parseInt(investment.timestamp, 10) || 0 
+              : Number(investment.timestamp) || 0,
+            status: String(investment.status || 'pending')
+          }));
+
+        setInvestments(formattedInvestments);
       } catch (err) {
         console.error('Error fetching investments:', err);
         setError('ไม่สามารถดึงข้อมูลการลงทุนได้');
@@ -72,7 +99,7 @@ export const UserInvestments = () => {
     );
   }
 
-  if (!investments || investments.length === 0) {
+  if (!Array.isArray(investments) || !investments.length) {
     return (
       <div className="text-center text-muted-foreground">
         ไม่พบข้อมูลการลงทุน
