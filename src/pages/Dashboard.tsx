@@ -92,7 +92,7 @@ const Dashboard = () => {
               </TabsContent>
 
               <TabsContent value="investments">
-                <UserInvestments />
+                <UserInvestments investments={[]} loading={false} />
               </TabsContent>
 
               <TabsContent value="proposals">

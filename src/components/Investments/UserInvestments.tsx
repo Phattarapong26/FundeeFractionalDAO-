@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Loader2, BarChart3, Clock, DollarSign, Activity } from 'lucide-react';
@@ -34,7 +33,7 @@ export const UserInvestments: React.FC<UserInvestmentsProps> = ({ investments, l
     );
   }
 
-  if (investments.length === 0) {
+  if (!investments || investments.length === 0) {
     return (
       <div className="text-center py-12 bg-gray-50 rounded-lg">
         <BarChart3 className="mx-auto h-12 w-12 text-gray-300" />
